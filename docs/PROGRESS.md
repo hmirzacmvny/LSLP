@@ -1,6 +1,6 @@
 # PROGRESS.md
 
-Snapshot of what's built, file by file, as of the handoff to Claude Code.
+Snapshot of what's built, file by file.
 
 ---
 
@@ -8,7 +8,7 @@ Snapshot of what's built, file by file, as of the handoff to Claude Code.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (Dashboard done, PWA next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (Auth done, PWA next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -37,7 +37,7 @@ Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 | `visits` | 168 | `D2D_Jan2026.csv` | ✅ Imported |
 | `outreach_log` | 9,485 | `Outreach_Log.csv` (wide→long converted) | ✅ Imported |
 | `customer_submissions` | 0 | Phase 2 — customer portal | ✅ Schema ready |
-| `users` | 0 | Phase 2 — Firebase Auth | ✅ Schema ready |
+| `users` | 1 | Phase 2 — Firebase Auth | ✅ Admin account created |
 | `audit_log` | 0 | Auto-populated by triggers (later) | ✅ Schema ready |
 
 ### Indexes
@@ -50,8 +50,9 @@ Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 - `idx_properties_status` on `properties.verified_status`
 
 ### Migrations
-- **Alembic: NOT YET SET UP.** Schema was created via a one-shot SQL file (`lslp_schema.sql`) before Alembic was needed.
-- **Next step on schema changes:** initialize Alembic before any further schema modifications.
+- **Alembic: initialized.** Empty baseline migration committed and DB stamped at `6069791d1b62`.
+- **For any schema change:** run `alembic revision --autogenerate -m "description"` then `alembic upgrade head`.
+- When adding new models, also import them in `alembic/env.py`.
 
 ---
 
@@ -61,15 +62,18 @@ Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 | File | Purpose | Status |
 |---|---|---|
 | `main.py` | FastAPI app, CORS, router registration | ✅ Complete |
-| `.env` | DB creds + Firebase keys | ✅ Created (NOT committed) |
+| `.env` | DB creds + Firebase project ID | ✅ Created (NOT committed) |
+| `.env.example` | Template showing all required keys | ✅ Created |
 | `import_data.py` | One-time CSV → PostgreSQL import script | ✅ Executed successfully |
-| `requirements.txt` | Python dependencies | ✅ Generated via `pip freeze` |
+| `requirements.txt` | Python dependencies | ✅ Updated (includes firebase-admin) |
 | `lslp_schema.sql` | Initial table creation SQL | ✅ Executed once via pgAdmin |
+| `alembic.ini` | Alembic config (DB URL set dynamically from .env) | ✅ Configured |
 
 ### Installed packages
 ```
 fastapi, uvicorn, sqlalchemy, alembic, python-multipart,
-psycopg2-binary, pandas, python-dotenv, numpy
+psycopg2-binary, pandas, python-dotenv, numpy, firebase-admin,
+pyjwt, cryptography, requests
 ```
 
 ### `app/database.py`
@@ -81,6 +85,7 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `property.py` | `Property` | ✅ Complete | Maps to `properties` table |
 | `visit.py` | `Visit` | ✅ Complete | `access_granted` is `String` not `Boolean` |
 | `outreach.py` | `OutreachLog` | ✅ Complete | Imported as `Outreach` in API via alias |
+| `user.py` | `User` | ✅ Complete | Maps to `users` table; added Phase 2.1 |
 
 ### `app/schemas/` — Pydantic schemas
 | File | Schemas | Status | Notes |
@@ -90,16 +95,24 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `outreach.py` | `OutreachCreate`, `OutreachResponse` | ✅ Complete | `attempt_number` removed from `OutreachCreate` — calculated server-side |
 
 ### `app/api/` — Route handlers
-| File | Endpoints | Status |
-|---|---|---|
-| `properties.py` | `GET /` (with `search`, `verified_status`, `address` filters), `GET /{id}`, `PATCH /{id}` | ✅ Complete |
-| `visits.py` | `GET /` (filterable by `account_number`), `GET /{id}`, `POST /` (multipart with photo upload) | ✅ Complete |
-| `outreach.py` | `GET /` (filterable), `GET /{id}`, `POST /` (auto-calculates `attempt_number`) | ✅ Complete |
+| File | Endpoints | Auth | Status |
+|---|---|---|---|
+| `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth; PATCH: office_staff+ | ✅ Complete |
+| `visits.py` | `GET /`, `GET /{id}`, `POST /` | all: any auth | ✅ Complete |
+| `outreach.py` | `GET /`, `GET /{id}`, `POST /` | GET: any auth; POST: office_staff+ | ✅ Complete |
 
 ### `app/services/`
 | File | Purpose | Status |
 |---|---|---|
-| `storage.py` | Local file storage for photos (`save_photo`, `delete_photo`) — saves to `C:\lslp\backend\uploads\` | ✅ Complete |
+| `storage.py` | Local file storage for photos (`save_photo`, `delete_photo`) | ✅ Complete |
+| `auth.py` | Firebase JWT verification via public JWKS + role enforcement | ✅ Complete (Phase 2.1) |
+
+### `alembic/`
+| File | Purpose | Status |
+|---|---|---|
+| `alembic.ini` | Config — DB URL sourced from `.env` at runtime | ✅ Configured |
+| `alembic/env.py` | Loads `.env`, imports all models, sets `target_metadata` | ✅ Configured |
+| `alembic/versions/6069791d1b62_baseline.py` | Empty baseline — DB stamped here, no ops | ✅ Committed |
 
 ### Bugs fixed during Phase 1 (don't reintroduce these)
 1. **`access_granted` type mismatch** — was `Boolean`, but real data contains values like "No Answer" and "Scheduled". Changed column type to `String` in both model and Pydantic schema.
@@ -107,17 +120,21 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 3. **`attempt_number` "multiple values" TypeError** — `attempt_number` was in `OutreachBase`, which got unpacked along with the server-calculated value. Fixed by removing it from `OutreachCreate`.
 4. **`OutreachLog` vs `Outreach` import error** — model class is `OutreachLog`; API uses `from app.models.outreach import OutreachLog as Outreach`.
 
+### Bugs/decisions from Phase 2.1
+5. **Firebase service account key creation blocked by org policy** — switched to JWKS-based token verification using `PyJWKClient` against Firebase's public key endpoint. Only requires `FIREBASE_PROJECT_ID` in `.env`. No service account JSON needed.
+6. **Firebase Admin SDK crashes at import if credentials missing** — wrapped initialization in try/except; error is surfaced at request time (500), not import time.
+
 ---
 
 ## Frontend — `C:\lslp\frontend\`
 
 ### Stack
-React 18 + Vite + Tailwind v4 (via `@tailwindcss/postcss`) + React Router DOM + Axios.
+React 18 + Vite + Tailwind v4 (via `@tailwindcss/postcss`) + React Router DOM + Axios + Firebase JS SDK.
 
 ### Installed packages
 ```
 axios, react-router-dom, @tanstack/react-query,
-tailwindcss, @tailwindcss/postcss, autoprefixer, postcss
+tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
 ```
 
 ### Top-level
@@ -127,31 +144,39 @@ tailwindcss, @tailwindcss/postcss, autoprefixer, postcss
 | `postcss.config.js` | Configures `@tailwindcss/postcss` and `autoprefixer` | ✅ Complete |
 | `src/index.css` | Single line: `@import "tailwindcss";` | ✅ Complete |
 | `src/main.jsx` | React root render | ✅ Default |
-| `src/App.jsx` | Router setup, Navbar, routes for all 4 dashboard pages | ✅ Complete |
+| `src/App.jsx` | Router setup — `/login` public, all other routes wrapped in `<RequireAuth>` | ✅ Updated Phase 2.1 |
+| `.env.local` | Firebase web SDK keys (`VITE_*`) — NOT committed | ✅ Created |
 
 ### `src/lib/`
 | File | Purpose | Status |
 |---|---|---|
-| `api.js` | Axios instance + endpoint wrappers: `getProperties`, `getProperty`, `updateProperty`, `getVisits`, `getVisit`, `createVisit`, `getOutreach`, `createOutreach` | ✅ Complete |
+| `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor | ✅ Updated Phase 2.1 |
+| `firebase.js` | Firebase app init from `VITE_*` env vars, exports `auth` | ✅ New Phase 2.1 |
 
 ### `src/components/`
 | File | Purpose | Status |
 |---|---|---|
 | `Navbar.jsx` | Top navigation with logo, Properties / Log Visit / Log Outreach buttons | ✅ Complete |
+| `RequireAuth.jsx` | Auth gate — loading state during Firebase init, redirect to `/login` if unauthed | ✅ New Phase 2.1 |
 
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
 |---|---|---|
-| `PropertiesList.jsx` | Search by address or account number, table of results, click row to navigate to detail | ✅ Complete |
-| `PropertyDetail.jsx` | Property header, 4 service-line cards, Visits tab, Outreach tab, quick action buttons | ✅ Complete |
-| `NewVisit.jsx` | Form to log a field visit. Pre-fills `account_number` if navigated from a property page. Supports photo upload. | ✅ Complete |
-| `NewOutreach.jsx` | Form to log an outreach attempt. Pre-fills `account_number` if navigated from a property page. Toggleable customer-initiated section. | ✅ Complete |
+| `PropertiesList.jsx` | Search by address or account number, table of results | ✅ Complete |
+| `PropertyDetail.jsx` | Property header, service-line cards, Visits tab, Outreach tab | ✅ Complete |
+| `NewVisit.jsx` | Form to log a field visit with optional photo upload | ✅ Complete |
+| `NewOutreach.jsx` | Form to log an outreach attempt | ✅ Complete |
+
+### `src/pages/`
+| File | Purpose | Status |
+|---|---|---|
+| `Login.jsx` | Email/password sign-in form, redirects to intended page on success | ✅ New Phase 2.1 |
 
 ### `src/pages/FieldApp/`
-Empty — Phase 2 PWA work has not started.
+Empty — Phase 2.2+ work has not started.
 
 ### `src/pages/Portal/`
-Empty — Phase 2 customer portal work has not started.
+Empty — Phase 2.5 customer portal work has not started.
 
 ---
 
@@ -159,10 +184,10 @@ Empty — Phase 2 customer portal work has not started.
 
 | Service | Status | Notes |
 |---|---|---|
-| **Firebase project** | ✅ Created (`lslp-platform`) | Web app registered, config keys in `.env` |
-| **Firebase Auth** | ✅ Enabled | Email/password provider on, free tier |
+| **Firebase project** | ✅ Created (`lslp-platform`) | Web app registered, config keys in `frontend/.env.local` |
+| **Firebase Auth** | ✅ Active | Email/password provider on; admin account created |
 | **Firebase Storage** | ❌ Not available | Requires paid plan — using local storage interim |
-| **API key rotation** | ✅ Done | Original key was exposed in chat; rotated and replaced |
+| **Firebase Admin SDK** | ✅ Not needed | Token verification uses public JWKS endpoint instead |
 
 ---
 
@@ -170,36 +195,36 @@ Empty — Phase 2 customer portal work has not started.
 
 A staff user can today, from the web dashboard:
 
-1. Search the full 10,475-property list by address or account number
-2. Click into any property and see its full classification, history of visits, and history of outreach
-3. Log a new field visit (with optional photos uploaded to local storage)
-4. Log a new outreach attempt (with automatic attempt-number sequencing)
-5. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
+1. **Sign in** with email/password via Firebase Auth — unauthenticated users are redirected to `/login`
+2. Search the full 10,475-property list by address or account number
+3. Click into any property and see its full classification, history of visits, and history of outreach
+4. Log a new field visit (with optional photos uploaded to local storage)
+5. Log a new outreach attempt (with automatic attempt-number sequencing)
+6. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
 
-Photos uploaded during a visit are saved to:
-```
-C:\lslp\backend\uploads\field\<account_number>\<uuid>.jpg
-```
-and the path is stored in the `visits.photo_urls` JSONB column.
+Role enforcement is active:
+- `field_crew` — can read everything, POST visits
+- `office_staff` / `supervisor` / `admin` — all of the above + PATCH properties + POST outreach
 
 ---
 
 ## Known Gaps (intentional — not bugs)
 
-These are not broken — they just haven't been built yet:
-
-- 🔲 **No authentication.** The API is wide open on localhost. Firebase Auth integration is Phase 2.
-- 🔲 **No PWA manifest or Service Worker.** The dashboard works in a browser but isn't installable on iPad yet.
-- 🔲 **No offline mode.** Field visits can't be saved without network. Dexie.js + IndexedDB is the Phase 2 fix.
-- 🔲 **No customer portal.** Phase 2 will add `pages/Portal/`.
+- 🔲 **No PWA manifest or Service Worker.** Phase 2.2.
+- 🔲 **No offline mode.** Phase 2.3.
+- 🔲 **No field-optimized form.** Phase 2.4.
+- 🔲 **No customer portal.** Phase 2.5.
+- 🔲 **No customer submission review queue.** Phase 2.6.
 - 🔲 **No audit log triggers.** The `audit_log` table exists but nothing writes to it yet.
 - 🔲 **No Springbrook sync, no Brightly auto-WO, no ArcGIS export endpoint.** All Phase 3.
 - 🔲 **No Metabase.** Phase 3.
-- 🔲 **No Alembic migrations.** Schema was bootstrapped via raw SQL. Initialize Alembic before any schema change.
-- 🔲 **No tests.** Pytest setup is a Phase 3 nice-to-have, not blocking.
+- 🔲 **No tests.** Phase 3 nice-to-have.
+- 🔲 **outreach_log attempt_number edge case** — untested beyond 4 attempts (imported data max). Should work fine but worth a manual test before relying on it.
 
 ---
 
 ## Git Status
 
-- ⚠️ **Git not yet initialized in this project.** Recommended first action under Claude Code: `git init`, add `.gitignore` for `venv/`, `node_modules/`, `.env`, `uploads/`, commit baseline.
+- ✅ Git initialized at `C:\lslp\`. Branch: `main`.
+- `.gitignore` covers `venv/`, `node_modules/`, `.env`, `.env.local`, `uploads/`, `__pycache__/`.
+- All Phase 1 + Phase 2.1 work committed.

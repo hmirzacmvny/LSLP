@@ -4,22 +4,15 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ---
 
-## Immediate Next Actions (do these first under Claude Code)
+## Immediate Next Actions (pick up here next session)
 
-These aren't part of any phase — they're hygiene tasks that should happen before the next feature is built.
+Pre-phase hygiene tasks — all done except one:
 
-1. **Initialize Git.** `git init` at `C:\lslp\`. Create a `.gitignore` covering `venv/`, `node_modules/`, `.env`, `uploads/`, `__pycache__/`, `*.pyc`, `.vscode/`. Commit baseline as "Phase 1 complete: backend + dashboard working".
-
-2. **Create `.env.example`.** Template version of `.env` with all keys but blank values, so a future contributor (or future me) knows what's needed.
-
-3. **Initialize Alembic.** Before any further schema change, run:
-   ```
-   cd C:\lslp\backend
-   alembic init alembic
-   ```
-   Configure `alembic.ini` and `alembic/env.py` to read from `.env` and use the SQLAlchemy `Base.metadata`. Generate a baseline migration that captures the current schema as version 0.
-
-4. **Add an `outreach_log` API edge case.** When a property already has 4 attempts and a 5th comes in, the `attempt_number` calculation should still work (we tested up to 4 because that's the imported data, but the new schema supports unlimited).
+1. ~~**Initialize Git.**~~ ✅ Done — baseline committed on `main`.
+2. ~~**Create `.env.example`.**~~ ✅ Done.
+3. ~~**Initialize Alembic.**~~ ✅ Done — DB stamped at baseline `6069791d1b62`.
+4. **Test the login flow end-to-end.** Start both servers, navigate to `http://localhost:5173`, confirm redirect to `/login`, sign in with the admin account, confirm the dashboard loads and API calls succeed with a Bearer token.
+5. **Add an `outreach_log` API edge case.** When a property already has 4 attempts and a 5th comes in, the `attempt_number` calculation should still work (we tested up to 4 because that's the imported data, but the new schema supports unlimited).
 
 ---
 
@@ -27,18 +20,20 @@ These aren't part of any phase — they're hygiene tasks that should happen befo
 
 **Goal:** Get the dashboard onto iPads with offline support, and replace Plumsail with a real customer portal. Add login so we can stop running with the door wide open.
 
-### 2.1 Firebase Auth Integration (1 week)
-- [ ] Install `firebase` npm package in frontend
-- [ ] Create `src/lib/firebase.js` initializing the Firebase app from `.env` values (use Vite's `import.meta.env.VITE_*` pattern)
-- [ ] Create `src/pages/Login.jsx` with email/password sign-in
-- [ ] Create a `<RequireAuth>` wrapper component in `src/components/` that redirects unauthenticated users to `/login`
-- [ ] Wrap all Dashboard routes in `<RequireAuth>` in `App.jsx`
-- [ ] On the backend, install `firebase-admin` Python package
-- [ ] Create `app/services/auth.py` with a `verify_firebase_token` dependency that decodes the JWT from the `Authorization` header
-- [ ] Add the auth dependency to every protected endpoint
-- [ ] Update `lib/api.js` to attach `Authorization: Bearer <token>` to every request
-- [ ] Manually create a few `users` rows for testing — link each `firebase_uid` to a name, email, and role
-- [ ] Test: login flow works, unauthenticated requests get `401`, role-based filtering ready for future use
+### 2.1 Firebase Auth Integration ✅ COMPLETE
+- [x] Install `firebase` npm package in frontend
+- [x] Create `src/lib/firebase.js` initializing the Firebase app from `VITE_*` env vars
+- [x] Create `src/pages/Login.jsx` with email/password sign-in
+- [x] Create `src/components/RequireAuth.jsx` — redirects unauthenticated users to `/login`
+- [x] Wrap all Dashboard routes in `<RequireAuth>` in `App.jsx`
+- [x] Install `firebase-admin` Python package
+- [x] Create `app/services/auth.py` — JWT verification via public JWKS + `require_role` factory
+- [x] Add auth dependencies to all protected endpoints per role matrix
+- [x] Update `lib/api.js` to attach `Authorization: Bearer <token>` to every request
+- [x] Admin account created in Firebase Auth + `users` table
+- [ ] **Test end-to-end:** login flow works, unauthenticated requests get `401`, role enforcement confirmed
+
+> **Note:** Firebase service account key creation was blocked by org policy. Token verification uses Firebase's public JWKS endpoint via `PyJWKClient`. Only `FIREBASE_PROJECT_ID` is needed in `.env`.
 
 ### 2.2 PWA Setup (3 days)
 - [ ] `npm install vite-plugin-pwa`

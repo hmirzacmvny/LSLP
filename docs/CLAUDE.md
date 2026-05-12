@@ -84,13 +84,15 @@ C:\lslp\
 │   │   ├── models\            ← SQLAlchemy table definitions
 │   │   │   ├── property.py
 │   │   │   ├── visit.py
-│   │   │   └── outreach.py
+│   │   │   ├── outreach.py
+│   │   │   └── user.py
 │   │   ├── schemas\           ← Pydantic request/response shapes
 │   │   │   ├── property.py
 │   │   │   ├── visit.py
 │   │   │   └── outreach.py
 │   │   └── services\
-│   │       └── storage.py     ← photo upload service (local → Firebase later)
+│   │       ├── storage.py     ← photo upload service (local → Firebase later)
+│   │       └── auth.py        ← Firebase JWT verification + require_role factory
 │   ├── main.py                ← FastAPI app entry, CORS, router registration
 │   ├── .env                   ← DB creds + Firebase keys (NEVER commit)
 │   ├── import_data.py         ← one-time CSV import script
@@ -105,12 +107,15 @@ C:\lslp\
         │   │   ├── PropertyDetail.jsx
         │   │   ├── NewVisit.jsx
         │   │   └── NewOutreach.jsx
+        │   ├── Login.jsx      ← public sign-in page (outside RequireAuth)
         │   ├── FieldApp\      ← PWA for iPads (Phase 2, not built yet)
         │   └── Portal\        ← customer self-submit (Phase 2, not built yet)
         ├── components\
-        │   └── Navbar.jsx
+        │   ├── Navbar.jsx
+        │   └── RequireAuth.jsx  ← auth gate, wraps all dashboard routes
         ├── lib\
-        │   └── api.js         ← axios client + all endpoint wrappers
+        │   ├── api.js         ← axios client + all endpoint wrappers + Bearer interceptor
+        │   └── firebase.js    ← Firebase app init, exports auth
         ├── App.jsx            ← React Router setup
         ├── main.jsx
         └── index.css          ← Tailwind v4 entry: @import "tailwindcss"
@@ -218,18 +223,21 @@ old_value, new_value, changed_by, changed_at
 - ❌ Never suggest microservices, lambdas, or serverless rewrites
 - ❌ Never store photos as base64 in the database — they go in the storage service
 - ❌ Never bulk-format files without my approval — small focused edits only
-- ❌ Never commit `.env`, `venv\`, `node_modules\`, or `uploads\` to git
+- ❌ Never commit `.env`, `.env.local`, `venv\`, `node_modules\`, or `uploads\` to git
+- ❌ Never try to use Firebase service account JSON key files — org policy blocks key creation. Use JWKS-based verification instead (already set up in `app/services/auth.py`).
+- ❌ Never write design spec docs or implementation plan docs unless Hamza explicitly asks for them — he prefers to go straight to building.
 
 ---
 
 ## 9. Things to Always Do
 
-- ✅ When adding a new model, update: model file, schema file, API route file, and `lib/api.js` on the frontend
-- ✅ When adding a new field to a table, write an Alembic migration (once Alembic is set up)
+- ✅ When adding a new model, update: model file, schema file, API route file, `lib/api.js` on the frontend, and `alembic/env.py` imports
+- ✅ When adding a new field to a table, write an Alembic migration: `alembic revision --autogenerate -m "description"` then `alembic upgrade head`
 - ✅ When something fails, check the uvicorn terminal first — the real error is there
 - ✅ When testing POST endpoints, use Thunder Client (text fields) or Python `requests` (file uploads)
 - ✅ When stuck, ask before guessing — wrong guesses cost more time than asking
 - ✅ When the schema changes, update `PROGRESS.md` and `ROADMAP.md`
+- ✅ When adding a new protected endpoint, apply `Depends(verify_firebase_token)` for any-auth or `Depends(require_role([...]))` for role-restricted access
 
 ---
 
