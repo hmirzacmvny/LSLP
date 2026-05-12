@@ -1,49 +1,43 @@
 import os
+import time
+import requests as http_requests
 from dotenv import load_dotenv
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
+from jwt import PyJWT, PyJWKClient
 from app.database import get_db
 from app.models.user import User
 
 load_dotenv()
 
-# Initialize Firebase Admin SDK once on import
-import firebase_admin
-from firebase_admin import credentials, auth as firebase_auth
+FIREBASE_PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID")
+FIREBASE_JWKS_URL = "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com"
 
-_firebase_init_error = None
-
-if not firebase_admin._apps:
-    try:
-        cred = credentials.Certificate({
-            "type": "service_account",
-            "project_id": os.getenv("FIREBASE_PROJECT_ID"),
-            "private_key_id": os.getenv("FIREBASE_PRIVATE_KEY_ID"),
-            "private_key": os.getenv("FIREBASE_PRIVATE_KEY", "").replace("\\n", "\n"),
-            "client_email": os.getenv("FIREBASE_CLIENT_EMAIL"),
-            "client_id": os.getenv("FIREBASE_CLIENT_ID"),
-            "token_uri": "https://oauth2.googleapis.com/token",
-        })
-        firebase_admin.initialize_app(cred)
-    except Exception as e:
-        _firebase_init_error = str(e)
+# PyJWKClient handles fetching and caching Firebase's public keys
+_jwks_client = PyJWKClient(FIREBASE_JWKS_URL, cache_keys=True)
 
 bearer_scheme = HTTPBearer()
+
+
+def _decode_firebase_token(token: str) -> dict:
+    signing_key = _jwks_client.get_signing_key_from_jwt(token)
+    return PyJWT().decode(
+        token,
+        signing_key.key,
+        algorithms=["RS256"],
+        audience=FIREBASE_PROJECT_ID,
+        issuer=f"https://securetoken.google.com/{FIREBASE_PROJECT_ID}",
+    )
 
 
 async def verify_firebase_token(
     credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    if _firebase_init_error:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Firebase not configured: {_firebase_init_error}",
-        )
     token = credentials.credentials
     try:
-        decoded = firebase_auth.verify_id_token(token)
+        decoded = _decode_firebase_token(token)
     except Exception:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
