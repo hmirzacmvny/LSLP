@@ -1,0 +1,228 @@
+# ROADMAP.md
+
+What's coming next, organized by phase. Each item is sized so a solo developer can finish it in a focused session or two.
+
+---
+
+## Immediate Next Actions (do these first under Claude Code)
+
+These aren't part of any phase — they're hygiene tasks that should happen before the next feature is built.
+
+1. **Initialize Git.** `git init` at `C:\lslp\`. Create a `.gitignore` covering `venv/`, `node_modules/`, `.env`, `uploads/`, `__pycache__/`, `*.pyc`, `.vscode/`. Commit baseline as "Phase 1 complete: backend + dashboard working".
+
+2. **Create `.env.example`.** Template version of `.env` with all keys but blank values, so a future contributor (or future me) knows what's needed.
+
+3. **Initialize Alembic.** Before any further schema change, run:
+   ```
+   cd C:\lslp\backend
+   alembic init alembic
+   ```
+   Configure `alembic.ini` and `alembic/env.py` to read from `.env` and use the SQLAlchemy `Base.metadata`. Generate a baseline migration that captures the current schema as version 0.
+
+4. **Add an `outreach_log` API edge case.** When a property already has 4 attempts and a 5th comes in, the `attempt_number` calculation should still work (we tested up to 4 because that's the imported data, but the new schema supports unlimited).
+
+---
+
+## Phase 2 — Field App + Customer Portal (Next ~5 weeks)
+
+**Goal:** Get the dashboard onto iPads with offline support, and replace Plumsail with a real customer portal. Add login so we can stop running with the door wide open.
+
+### 2.1 Firebase Auth Integration (1 week)
+- [ ] Install `firebase` npm package in frontend
+- [ ] Create `src/lib/firebase.js` initializing the Firebase app from `.env` values (use Vite's `import.meta.env.VITE_*` pattern)
+- [ ] Create `src/pages/Login.jsx` with email/password sign-in
+- [ ] Create a `<RequireAuth>` wrapper component in `src/components/` that redirects unauthenticated users to `/login`
+- [ ] Wrap all Dashboard routes in `<RequireAuth>` in `App.jsx`
+- [ ] On the backend, install `firebase-admin` Python package
+- [ ] Create `app/services/auth.py` with a `verify_firebase_token` dependency that decodes the JWT from the `Authorization` header
+- [ ] Add the auth dependency to every protected endpoint
+- [ ] Update `lib/api.js` to attach `Authorization: Bearer <token>` to every request
+- [ ] Manually create a few `users` rows for testing — link each `firebase_uid` to a name, email, and role
+- [ ] Test: login flow works, unauthenticated requests get `401`, role-based filtering ready for future use
+
+### 2.2 PWA Setup (3 days)
+- [ ] `npm install vite-plugin-pwa`
+- [ ] Update `vite.config.js` to register the plugin with manifest + Service Worker
+- [ ] Add app icons (192x192, 512x512) to `public/`
+- [ ] Configure manifest: name "LSLP", short_name "LSLP", display "standalone", theme color matching navbar
+- [ ] Configure Service Worker caching: app shell precached, API responses cached with stale-while-revalidate
+- [ ] Test on an actual iPad: open dashboard URL in Safari, "Add to Home Screen", launch from home screen, verify standalone mode (no Safari chrome) and that it loads offline (after first visit)
+
+### 2.3 Offline Mode for Field Visits (1 week)
+- [ ] `npm install dexie`
+- [ ] Create `src/lib/db.js` with a Dexie schema: `pendingVisits` table storing visit form data + photo blobs
+- [ ] Update `NewVisit.jsx`:
+  - On submit, check `navigator.onLine`
+  - If online: POST to API directly (current behavior)
+  - If offline: save form data + photo blobs to IndexedDB, show "Saved Locally — Will Sync When Online" badge
+- [ ] Create `src/lib/sync.js` that:
+  - Listens for `window.addEventListener('online', ...)`
+  - Drains the `pendingVisits` table by POSTing each one to the API
+  - Deletes successfully synced records
+  - Reports failures in a UI banner
+- [ ] Add a sync status indicator to the Navbar: "✅ All Synced" / "🔄 3 Pending"
+- [ ] Test: turn off WiFi, log a visit with a photo, turn WiFi back on, verify it syncs
+
+### 2.4 PWA-Specific Field Form (3 days)
+- [ ] Build `src/pages/FieldApp/FieldVisitForm.jsx` — a streamlined, mobile-first version of `NewVisit.jsx`:
+  - Larger touch targets
+  - Camera capture via `<input type="file" accept="image/*" capture="environment">`
+  - GPS coordinates (optional, via `navigator.geolocation`)
+  - Property lookup by address auto-complete
+- [ ] Add route `/field` in `App.jsx` that defaults to this form for users with `field_crew` role
+- [ ] Test on iPad
+
+### 2.5 Customer Portal (1 week)
+- [ ] Build `src/pages/Portal/SubmitForm.jsx` — public-facing form (no auth required):
+  - Address lookup against `properties` table
+  - Submitter name, contact info, year constructed, prior line work
+  - Up to 3 photo uploads
+  - Privacy notice + submit button
+- [ ] Add route `/submit` in `App.jsx` (outside `<RequireAuth>`)
+- [ ] Backend: extend `app/api/` with `submissions.py`:
+  - `POST /api/submissions/` — accepts multipart form, uses API key auth (not Firebase JWT), writes to `customer_submissions` table
+- [ ] Add API key middleware in `app/services/auth.py` — separate from Firebase JWT
+- [ ] Store API key in `.env` (`PORTAL_API_KEY=...`) and embed in the portal page at build time
+
+### 2.6 Customer Submission Review Queue (3 days)
+- [ ] Build `src/pages/Dashboard/SubmissionsQueue.jsx` — table of pending submissions
+- [ ] Build `src/pages/Dashboard/SubmissionDetail.jsx` — full submission view with Approve / Reject buttons
+- [ ] Backend: `GET /api/submissions/`, `GET /api/submissions/{id}`, `PATCH /api/submissions/{id}/review`
+- [ ] Approving a submission should update the property's `verified_status` if appropriate
+
+### 2.7 Phase 2 Wrap-Up
+- [ ] Update `PROGRESS.md` to reflect all completed work
+- [ ] Run a full end-to-end test: customer submits → office reviews → field crew visits → all data persists
+- [ ] Commit Phase 2 to git
+
+---
+
+## Phase 3 — Automation & Integrations (~5 weeks)
+
+**Goal:** The system runs itself. Springbrook gets updated nightly, Brightly work orders auto-create, ArcGIS keeps getting clean data, and stakeholders have dashboards.
+
+### 3.1 APScheduler Setup (2 days)
+- [ ] Add APScheduler to `requirements.txt`
+- [ ] Initialize scheduler in FastAPI startup event (`main.py`)
+- [ ] Create `app/tasks/` folder
+- [ ] First job: log a heartbeat every hour to confirm scheduler is running
+
+### 3.2 Springbrook Nightly Export (1 week)
+- [ ] Create `app/tasks/sync_springbrook.py`
+- [ ] Job runs nightly at 2 AM
+- [ ] Query: all properties where `springbrook_synced_at IS NULL` OR `updated_at > springbrook_synced_at`
+- [ ] Generate CSV in Springbrook's required format
+- [ ] Save to `uploads/exports/{date}/springbrook_sync.csv` (and later, to Firebase Storage)
+- [ ] If Springbrook API exists: POST directly. Otherwise: leave the CSV in a network drop folder.
+- [ ] Update `springbrook_synced_at` on every synced record
+- [ ] Add a manual trigger endpoint: `POST /api/export/springbrook` (admin only)
+- [ ] **First step: confirm with the program manager exactly what CSV format Springbrook accepts**
+
+### 3.3 Brightly Auto Work Orders (1 week)
+- [ ] Create `app/services/brightly.py` with `create_work_order(visit)` function
+- [ ] After every successful `POST /api/visits/`, if `access_granted == "Yes"` and `verification_outcome != "Inaccessible"`, call `create_work_order`
+- [ ] Wrap in try/except — never let a Brightly API failure block the visit save
+- [ ] On Brightly failure: log to `audit_log` with `needs_manual_wo` flag
+- [ ] Store returned `work_order_id` on the visit record
+- [ ] Build a dashboard filter to surface visits with `needs_manual_wo` flagged
+- [ ] **First step: get Brightly API credentials and docs**
+
+### 3.4 ArcGIS Export Endpoint (3 days)
+- [ ] Create `app/api/export.py` with `GET /api/v1/export/arcgis`
+- [ ] Returns JSON: `account_number`, `address`, `verified_status`, `verified_at`, latitude/longitude (if available)
+- [ ] **Versioned** — `/v1/` in the path. Never change the response shape without bumping to `/v2/`
+- [ ] Add authentication: ArcGIS pipeline gets a dedicated API key (separate from portal key)
+- [ ] Hand the endpoint URL + key to whoever maintains the existing ArcGIS integration
+
+### 3.5 Audit Log Triggers (3 days)
+- [ ] Write a PostgreSQL trigger function `log_changes()`
+- [ ] Apply trigger `AFTER UPDATE` on `properties`, `visits`, `customer_submissions`
+- [ ] Capture old vs new values for changed fields
+- [ ] Test: change a property's `verified_status`, verify an `audit_log` row appears
+- [ ] Build a simple `GET /api/audit/{table}/{record_id}` endpoint for spot-checks
+
+### 3.6 Metabase Setup (3 days)
+- [ ] Install Metabase locally (Docker is the simplest path)
+- [ ] Create a read-only PostgreSQL user for Metabase
+- [ ] Connect Metabase to the `lslp` database
+- [ ] Build the 4 core dashboards:
+  - **Classification Progress** — % of properties classified, by zone
+  - **Outreach Completion Rate** — % of properties with 4 qualifying attempts
+  - **Team Activity** — visits per week by initials
+  - **Compliance Timeline** — projected completion based on current pace
+- [ ] Enable public dashboard sharing for stakeholders
+- [ ] Document the dashboard URLs in a new `DASHBOARDS.md` file
+
+### 3.7 Phase 3 Wrap-Up
+- [ ] Update `PROGRESS.md`
+- [ ] Run a full end-to-end test: a visit is logged → Brightly WO is created → next morning Springbrook gets the update → ArcGIS pulls fresh data → Metabase reflects the new visit
+- [ ] Commit Phase 3 to git
+
+---
+
+## UI Redesign Pass (1 week — scheduled between Phase 2 and Phase 3)
+
+The current UI is functional but generic. Hamza has explicitly flagged that this is a **municipal-level project** and needs to look professional.
+
+- [ ] Establish a design system: color palette, typography scale, spacing tokens, border radii, shadow scale
+- [ ] Refactor the Navbar — proper branding, role-aware menu
+- [ ] Refactor `PropertiesList` — better table design, pagination, sort, advanced filters
+- [ ] Refactor `PropertyDetail` — proper page layout, breadcrumbs, action menu
+- [ ] Refactor forms — consistent input styling, error states, success states
+- [ ] Add an empty state for every list view
+- [ ] Add a 404 page
+- [ ] Test on iPad — the dashboard should look as good there as on desktop
+
+This pass uses the **frontend-design** skill — load it at the start of the session.
+
+---
+
+## Phase 4 — ML Image Classifier (~5 weeks, OPTIONAL)
+
+**Goal:** Photos from visits and customer submissions are automatically classified as Lead / Copper / Galvanized with a confidence score. Office staff use it as an assist, never a replacement for human judgment.
+
+Do not start Phase 4 until Phases 1-3 are stable in production for at least 30 days.
+
+- [ ] Export labeled training data from `visits` where `verification_outcome` is one of Lead, Copper, Galvanized
+- [ ] Train a MobileNetV2 or EfficientNet-B0 classifier (transfer learning, Python, Google Colab free GPU)
+- [ ] Target: >85% confidence threshold for production use
+- [ ] Save the trained model to `backend/app/ml/`
+- [ ] Add `POST /api/ml/classify` endpoint to FastAPI — accepts image, returns class probabilities
+- [ ] Display ML confidence in the customer submission review queue as a soft hint
+- [ ] Store ML predictions alongside visits but never overwrite a human classification
+
+---
+
+## Deployment (Phase 3 prerequisite)
+
+When ready to move off `localhost`:
+
+- [ ] Sign up for Railway or Render
+- [ ] Provision PostgreSQL on the same platform
+- [ ] Set environment variables from `.env`
+- [ ] Deploy backend with a Dockerfile (or platform-native Python buildpack)
+- [ ] Deploy frontend as a static site
+- [ ] Configure CORS for the production frontend domain
+- [ ] Set up automatic deploys from `main` branch (after git is initialized)
+- [ ] Update DNS to point a custom domain at the deployment
+
+---
+
+## Out of Scope (don't propose these)
+
+- React Native or any native mobile app
+- Microservices / service mesh / Kubernetes
+- A separate worker service (we use APScheduler inside the API)
+- Redis or any caching layer (PostgreSQL is fast enough at our scale)
+- GraphQL (REST is sufficient and easier to debug)
+- Switching out PostgreSQL for anything else
+- Switching out FastAPI for anything else
+- Rebuilding the database from scratch
+
+---
+
+## Reference
+
+- `CLAUDE.md` — how Claude Code should work on this project
+- `PROGRESS.md` — what's currently built
+- This file — what's next

@@ -1,0 +1,59 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from typing import Optional
+from app.database import get_db
+from app.models.property import Property
+from app.schemas.property import PropertyResponse, PropertyUpdate
+
+router = APIRouter()
+
+@router.get("/", response_model=list[PropertyResponse])
+def get_properties(
+    skip: int = 0,
+    limit: int = 100,
+    verified_status: Optional[str] = Query(None),
+    address: Optional[str] = Query(None),
+    search: Optional[str] = Query(None),
+    db: Session = Depends(get_db)
+):
+    query = db.query(Property)
+
+    if verified_status:
+        query = query.filter(Property.verified_status == verified_status)
+    if address:
+        query = query.filter(Property.address.ilike(f"%{address}%"))
+
+    if search:
+        query = query.filter(
+            Property.address.ilike(f"%{search}%") |
+            Property.account_number.ilike(f"%{search}%")
+        )
+    
+
+    return query.offset(skip).limit(limit).all()
+
+
+@router.get("/{account_number}", response_model=PropertyResponse)
+def get_property(account_number: str, db: Session = Depends(get_db)):
+    prop = db.query(Property).filter(Property.account_number == account_number).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+    return prop
+
+
+@router.patch("/{account_number}", response_model=PropertyResponse)
+def update_property(
+    account_number: str,
+    updates: PropertyUpdate,
+    db: Session = Depends(get_db)
+):
+    prop = db.query(Property).filter(Property.account_number == account_number).first()
+    if not prop:
+        raise HTTPException(status_code=404, detail="Property not found")
+
+    for field, value in updates.model_dump(exclude_unset=True).items():
+        setattr(prop, field, value)
+
+    db.commit()
+    db.refresh(prop)
+    return prop
