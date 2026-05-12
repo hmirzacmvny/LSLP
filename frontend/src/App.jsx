@@ -4,20 +4,32 @@ import PropertyDetail from './pages/Dashboard/PropertyDetail'
 import Navbar from './components/Navbar'
 import NewVisit from './pages/Dashboard/NewVisit'
 import NewOutreach from './pages/Dashboard/NewOutreach'
+import Login from './pages/Login'
+import RequireAuth from './components/RequireAuth'
 
 
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-50">
-        <Navbar />
-        <Routes>
-          <Route path="/" element={<PropertiesList />} />
-          <Route path="/properties/:accountNumber" element={<PropertyDetail />} />
-          <Route path="/visits/new" element={<NewVisit />} />
-          <Route path="/outreach/new" element={<NewOutreach />} />
-        </Routes>
-      </div>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/*"
+          element={
+            <RequireAuth>
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<PropertiesList />} />
+                  <Route path="/properties/:accountNumber" element={<PropertyDetail />} />
+                  <Route path="/visits/new" element={<NewVisit />} />
+                  <Route path="/outreach/new" element={<NewOutreach />} />
+                </Routes>
+              </div>
+            </RequireAuth>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   )
 }

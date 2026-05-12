@@ -4,6 +4,7 @@ from typing import Optional
 from app.database import get_db
 from app.models.property import Property
 from app.schemas.property import PropertyResponse, PropertyUpdate
+from app.services.auth import verify_firebase_token, require_role
 
 router = APIRouter()
 
@@ -14,7 +15,8 @@ def get_properties(
     verified_status: Optional[str] = Query(None),
     address: Optional[str] = Query(None),
     search: Optional[str] = Query(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _=Depends(verify_firebase_token),
 ):
     query = db.query(Property)
 
@@ -34,7 +36,7 @@ def get_properties(
 
 
 @router.get("/{account_number}", response_model=PropertyResponse)
-def get_property(account_number: str, db: Session = Depends(get_db)):
+def get_property(account_number: str, db: Session = Depends(get_db), _=Depends(verify_firebase_token)):
     prop = db.query(Property).filter(Property.account_number == account_number).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
@@ -45,7 +47,8 @@ def get_property(account_number: str, db: Session = Depends(get_db)):
 def update_property(
     account_number: str,
     updates: PropertyUpdate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _=Depends(require_role(["office_staff", "supervisor", "admin"])),
 ):
     prop = db.query(Property).filter(Property.account_number == account_number).first()
     if not prop:

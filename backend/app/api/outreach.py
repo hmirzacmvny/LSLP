@@ -4,6 +4,7 @@ from typing import List, Optional
 from app.database import get_db
 from app.models.outreach import OutreachLog as Outreach
 from app.schemas.outreach import OutreachCreate, OutreachResponse
+from app.services.auth import verify_firebase_token, require_role
 
 router = APIRouter()
 
@@ -11,7 +12,8 @@ router = APIRouter()
 @router.get("/", response_model=List[OutreachResponse])
 def get_outreach(
     account_number: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _=Depends(verify_firebase_token),
 ):
     query = db.query(Outreach)
     if account_number:
@@ -21,7 +23,7 @@ def get_outreach(
 
 # GET single outreach record by id
 @router.get("/{outreach_id}", response_model=OutreachResponse)
-def get_single_outreach(outreach_id: int, db: Session = Depends(get_db)):
+def get_single_outreach(outreach_id: int, db: Session = Depends(get_db), _=Depends(verify_firebase_token)):
     record = db.query(Outreach).filter(Outreach.id == outreach_id).first()
     if not record:
         raise HTTPException(status_code=404, detail="Outreach record not found")
@@ -30,7 +32,11 @@ def get_single_outreach(outreach_id: int, db: Session = Depends(get_db)):
 
 # POST create new outreach record
 @router.post("/", response_model=OutreachResponse)
-def create_outreach(payload: OutreachCreate, db: Session = Depends(get_db)):
+def create_outreach(
+    payload: OutreachCreate,
+    db: Session = Depends(get_db),
+    _=Depends(require_role(["office_staff", "supervisor", "admin"])),
+):
     # Verify the property exists
     from app.models.property import Property
     prop = db.query(Property).filter(

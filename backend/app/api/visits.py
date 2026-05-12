@@ -6,6 +6,7 @@ from app.models.visit import Visit
 from app.models.property import Property
 from app.schemas.visit import VisitCreate, VisitResponse
 from app.services.storage import save_photo
+from app.services.auth import verify_firebase_token
 
 router = APIRouter()
 
@@ -14,7 +15,8 @@ router = APIRouter()
 @router.get("/", response_model=List[VisitResponse])
 def get_visits(
     account_number: Optional[str] = None,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _=Depends(verify_firebase_token),
 ):
     query = db.query(Visit)
     if account_number:
@@ -24,7 +26,7 @@ def get_visits(
 
 # GET single visit by id
 @router.get("/{visit_id}", response_model=VisitResponse)
-def get_single_visit(visit_id: int, db: Session = Depends(get_db)):
+def get_single_visit(visit_id: int, db: Session = Depends(get_db), _=Depends(verify_firebase_token)):
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
@@ -41,7 +43,8 @@ def create_visit(
     property_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     photos: Optional[List[UploadFile]] = File(None),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    _=Depends(verify_firebase_token),
 ):
     # Verify property exists
     prop = db.query(Property).filter(
