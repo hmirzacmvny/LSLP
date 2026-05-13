@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1 Auth ✅, 2.2 PWA ✅, offline next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1 Auth ✅, 2.2 PWA ✅, 2.3 Offline ✅, field form next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -196,8 +196,31 @@ tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
 - API routes (`/api/*`) use NetworkFirst with 10 s timeout, 24 h cache, 200-entry max
 - `dist/sw.js` + `dist/workbox-*.js` generated on every build
 
+### Phase 2.3 — Offline Mode
+
+**New packages:**
+- `dexie@4.4.2` — IndexedDB wrapper for offline visit storage
+
+| File | Purpose | Status |
+|---|---|---|
+| `src/lib/db.js` | Dexie DB `lslpOfflineDB` — `pendingVisits` table (++id, syncStatus, savedAt indexed) | ✅ New |
+| `src/lib/sync.js` | `initSync()` — listens for `window online` event, drains pending visits to API; `getPendingCount()` — returns count of pending records | ✅ New |
+| `src/pages/Dashboard/NewVisit.jsx` | Submit handler now checks `navigator.onLine`: offline → saves to IndexedDB + shows "Saved Locally" screen; online → existing API POST behavior unchanged | ✅ Updated |
+| `src/components/Navbar.jsx` | Polls `getPendingCount()` every 30 s; shows "🔄 X pending sync" in orange when > 0 | ✅ Updated |
+| `src/main.jsx` | Calls `initSync()` on app load to register the `online` listener | ✅ Updated |
+
+**Offline record shape** (stored in IndexedDB):
+```
+{ id (auto), formData (all visit fields), photos (File blobs), savedAt (ISO string), syncStatus ("pending" | "failed") }
+```
+
+**Sync behavior:**
+- On reconnect: drains all `syncStatus = "pending"` records, POSTs each as `multipart/form-data`, deletes on success, marks `failed` on error
+- Failures do not crash the sync loop — remaining records continue to sync
+- Badge clears automatically when the poll interval fires after sync completes
+
 ### `src/pages/FieldApp/`
-Empty — Phase 2.3+ work has not started.
+Empty — Phase 2.4+ work has not started.
 
 ### `src/pages/Portal/`
 Empty — Phase 2.5 customer portal work has not started.
@@ -235,7 +258,7 @@ Role enforcement is active:
 ## Known Gaps (intentional — not bugs)
 
 - ✅ **PWA manifest and Service Worker.** Phase 2.2 complete. Icons are placeholders — replace with real artwork before production.
-- 🔲 **No offline mode.** Phase 2.3.
+- ✅ **Offline mode.** Phase 2.3 complete. `pendingVisits` stored in IndexedDB; sync fires on reconnect; Navbar badge shows pending count.
 - 🔲 **No field-optimized form.** Phase 2.4.
 - 🔲 **No customer portal.** Phase 2.5.
 - 🔲 **No customer submission review queue.** Phase 2.6.

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createVisit } from '../../lib/api'
+import { db } from '../../lib/db'
 
 export default function NewVisit() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(false)
+  const [offlineSaved, setOfflineSaved] = useState(false)
   const [photos, setPhotos] = useState([])
 
   const [form, setForm] = useState({
@@ -38,8 +40,27 @@ export default function NewVisit() {
       return
     }
 
+    // --- Offline path ---
+    if (!navigator.onLine) {
+      try {
+        await db.pendingVisits.add({
+          formData: { ...form },
+          photos: [...photos],
+          savedAt: new Date().toISOString(),
+          syncStatus: 'pending',
+        })
+        setOfflineSaved(true)
+        setTimeout(() => navigate(-1), 3000)
+      } catch (err) {
+        setError('Could not save offline. Please try again.')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    // --- Online path (existing behavior) ---
     try {
-      // Build form data — needed for file uploads
       const formData = new FormData()
       Object.entries(form).forEach(([key, val]) => {
         if (val) formData.append(key, val)
@@ -51,7 +72,6 @@ export default function NewVisit() {
       const res = await createVisit(formData)
       setSuccess(true)
 
-      // After 2 seconds go to the property detail page
       setTimeout(() => {
         navigate(`/properties/${res.data.account_number}`)
       }, 2000)
@@ -73,6 +93,17 @@ export default function NewVisit() {
         <div className="text-5xl mb-4">✅</div>
         <h2 className="text-2xl font-bold text-green-700 mb-2">Visit Logged</h2>
         <p className="text-gray-500">Redirecting to property page...</p>
+      </div>
+    </div>
+  )
+
+  if (offlineSaved) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="bg-white rounded-xl shadow p-10 text-center max-w-md">
+        <div className="text-5xl mb-4">📴</div>
+        <h2 className="text-2xl font-bold text-orange-600 mb-2">Saved Locally</h2>
+        <p className="text-gray-600">You are offline. This visit has been saved to your device and will sync automatically when you are back online.</p>
+        <p className="text-gray-400 text-sm mt-3">Returning...</p>
       </div>
     </div>
   )

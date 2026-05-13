@@ -1,8 +1,21 @@
+import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { getPendingCount } from '../lib/sync'
 
 export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const [pendingCount, setPendingCount] = useState(0)
+
+  useEffect(() => {
+    const check = async () => {
+      const count = await getPendingCount()
+      setPendingCount(count)
+    }
+    check()
+    const interval = setInterval(check, 30000)
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <nav className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-lg">
@@ -17,6 +30,13 @@ export default function Navbar() {
           <div className="text-blue-300 text-xs">Lead Service Line Inventory</div>
         </div>
       </div>
+
+      {/* Sync status */}
+      {pendingCount > 0 && (
+        <span className="text-orange-300 text-sm font-medium">
+          🔄 {pendingCount} pending sync
+        </span>
+      )}
 
       {/* Nav Links */}
       <div className="flex items-center gap-2">

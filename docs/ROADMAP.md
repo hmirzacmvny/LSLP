@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phase 2.1 and 2.2 are complete. **Next: Phase 2.3 — Offline Mode for Field Visits.**
+Phases 2.1, 2.2, and 2.3 are complete. **Next: Phase 2.4 — PWA-Specific Field Form.**
 
 Pre-phase hygiene tasks — all complete:
 
@@ -45,20 +45,13 @@ Pre-phase hygiene tasks — all complete:
 - [x] Configure Service Worker: app shell precached (11 entries); API routes use NetworkFirst with 10 s timeout + 24 h cache
 - [ ] Test on an actual iPad: open dashboard URL in Safari, "Add to Home Screen", launch from home screen, verify standalone mode and offline load
 
-### 2.3 Offline Mode for Field Visits (1 week)
-- [ ] `npm install dexie`
-- [ ] Create `src/lib/db.js` with a Dexie schema: `pendingVisits` table storing visit form data + photo blobs
-- [ ] Update `NewVisit.jsx`:
-  - On submit, check `navigator.onLine`
-  - If online: POST to API directly (current behavior)
-  - If offline: save form data + photo blobs to IndexedDB, show "Saved Locally — Will Sync When Online" badge
-- [ ] Create `src/lib/sync.js` that:
-  - Listens for `window.addEventListener('online', ...)`
-  - Drains the `pendingVisits` table by POSTing each one to the API
-  - Deletes successfully synced records
-  - Reports failures in a UI banner
-- [ ] Add a sync status indicator to the Navbar: "✅ All Synced" / "🔄 3 Pending"
-- [ ] Test: turn off WiFi, log a visit with a photo, turn WiFi back on, verify it syncs
+### 2.3 Offline Mode for Field Visits ✅ COMPLETE (2026-05-13)
+- [x] `npm install dexie`
+- [x] Create `src/lib/db.js` — `lslpOfflineDB` with `pendingVisits` table
+- [x] Update `NewVisit.jsx` — offline path saves to IndexedDB, shows "Saved Locally" screen
+- [x] Create `src/lib/sync.js` — `online` listener drains pending visits; `getPendingCount()` exported
+- [x] Add sync status indicator to Navbar — polls every 30 s, shows "🔄 X pending sync" in orange
+- [ ] Test on device: turn off WiFi, log a visit, reconnect, verify sync completes
 
 ### 2.4 PWA-Specific Field Form (3 days)
 - [ ] Build `src/pages/FieldApp/FieldVisitForm.jsx` — a streamlined, mobile-first version of `NewVisit.jsx`:
