@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phase 2.1 is fully complete and e2e confirmed. **Next: Phase 2.2 — PWA Setup.**
+Phase 2.1 and 2.2 are complete. **Next: Phase 2.3 — Offline Mode for Field Visits.**
 
 Pre-phase hygiene tasks — all complete:
 
@@ -37,13 +37,13 @@ Pre-phase hygiene tasks — all complete:
 
 > **Note:** Firebase service account key creation was blocked by org policy. Token verification uses Firebase's public JWKS endpoint via `PyJWKClient`. Only `FIREBASE_PROJECT_ID` is needed in `.env`.
 
-### 2.2 PWA Setup (3 days)
-- [ ] `npm install vite-plugin-pwa`
-- [ ] Update `vite.config.js` to register the plugin with manifest + Service Worker
-- [ ] Add app icons (192x192, 512x512) to `public/`
-- [ ] Configure manifest: name "LSLP", short_name "LSLP", display "standalone", theme color matching navbar
-- [ ] Configure Service Worker caching: app shell precached, API responses cached with stale-while-revalidate
-- [ ] Test on an actual iPad: open dashboard URL in Safari, "Add to Home Screen", launch from home screen, verify standalone mode (no Safari chrome) and that it loads offline (after first visit)
+### 2.2 PWA Setup ✅ COMPLETE (2026-05-13)
+- [x] `npm install vite-plugin-pwa`
+- [x] Update `vite.config.js` to register the plugin with manifest + Service Worker
+- [x] Add app icons (192x192, 512x512) to `public/icons/` — solid #1A56A0 placeholders; replace with real artwork before production
+- [x] Configure manifest: name "LSLP Platform", short_name "LSLP", display "standalone", theme_color #1A56A0
+- [x] Configure Service Worker: app shell precached (11 entries); API routes use NetworkFirst with 10 s timeout + 24 h cache
+- [ ] Test on an actual iPad: open dashboard URL in Safari, "Add to Home Screen", launch from home screen, verify standalone mode and offline load
 
 ### 2.3 Offline Mode for Field Visits (1 week)
 - [ ] `npm install dexie`

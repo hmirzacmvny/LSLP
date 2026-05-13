@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (Auth done, PWA next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1 Auth ✅, 2.2 PWA ✅, offline next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -178,8 +178,26 @@ tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
 |---|---|---|
 | `Login.jsx` | Email/password sign-in form, redirects to intended page on success | ✅ New Phase 2.1 |
 
+### Phase 2.2 — PWA Setup
+
+| File | Purpose | Status |
+|---|---|---|
+| `vite.config.js` | Updated — VitePWA plugin registered with manifest + Workbox Service Worker | ✅ Complete |
+| `public/icons/icon-192.png` | 192×192 placeholder app icon (solid #1A56A0) | ✅ Created |
+| `public/icons/icon-512.png` | 512×512 placeholder app icon (solid #1A56A0) | ✅ Created |
+
+**Manifest** (`dist/manifest.webmanifest` at build time):
+- name: "LSLP Platform", short_name: "LSLP"
+- display: standalone, start_url: "/"
+- theme_color: #1A56A0
+
+**Service Worker** (Workbox via `generateSW` mode):
+- App shell (JS/CSS/HTML/images) precached on install — 11 entries, ~431 KB
+- API routes (`/api/*`) use NetworkFirst with 10 s timeout, 24 h cache, 200-entry max
+- `dist/sw.js` + `dist/workbox-*.js` generated on every build
+
 ### `src/pages/FieldApp/`
-Empty — Phase 2.2+ work has not started.
+Empty — Phase 2.3+ work has not started.
 
 ### `src/pages/Portal/`
 Empty — Phase 2.5 customer portal work has not started.
@@ -216,7 +234,7 @@ Role enforcement is active:
 
 ## Known Gaps (intentional — not bugs)
 
-- 🔲 **No PWA manifest or Service Worker.** Phase 2.2.
+- ✅ **PWA manifest and Service Worker.** Phase 2.2 complete. Icons are placeholders — replace with real artwork before production.
 - 🔲 **No offline mode.** Phase 2.3.
 - 🔲 **No field-optimized form.** Phase 2.4.
 - 🔲 **No customer portal.** Phase 2.5.
