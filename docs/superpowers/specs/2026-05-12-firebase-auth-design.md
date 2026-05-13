@@ -1,7 +1,7 @@
 # Firebase Auth Integration — Design Spec
 **Date:** 2026-05-12
 **Phase:** 2.1
-**Status:** Approved
+**Status:** Complete (Implemented 2026-05-12)
 
 ---
 
@@ -41,12 +41,14 @@ Customer portal routes (`/submit`, Phase 2.5) stay outside `<RequireAuth>` on th
 ### `src/components/RequireAuth.jsx` (new)
 - Uses `onAuthStateChanged` to track auth state
 - While Firebase is initializing: renders a loading state (prevents flash-redirect to `/login`)
-- Authenticated: renders children
+- Authenticated: renders children. Individual pages do not need their own loading state for the token fetch — the Axios interceptor handles the async `getIdToken()` call transparently before the API request fires.
 - Unauthenticated: `<Navigate to="/login" state={{ from: location }} />`
 
 ### `src/lib/api.js` (modified)
 - Axios request interceptor added to the existing instance
-- Before every request: calls `auth.currentUser.getIdToken()` and injects result as `Authorization: Bearer <token>`
+- Before every request: checks `auth.currentUser` — if null (Firebase not yet initialized, user signed out, or cold load), the request proceeds without an `Authorization` header (protected routes will get a `401` from the backend, which `RequireAuth` handles via redirect)
+- If `auth.currentUser` is present: calls `getIdToken()` (async — interceptor returns a Promise) and injects result as `Authorization: Bearer <token>`
+- If `getIdToken()` throws (revoked token, invalidated session): interceptor catches the error, calls `auth.signOut()`, and rejects the request — the `onAuthStateChanged` listener in `RequireAuth` then redirects to `/login`
 - No changes to individual endpoint wrapper functions
 
 ### `src/App.jsx` (modified)
@@ -63,21 +65,23 @@ Two exports:
 
 **`verify_firebase_token` — FastAPI dependency**
 - Reads `Authorization: Bearer <token>` header
-- Decodes token via `firebase_admin.auth.verify_id_token()`
+- Decodes token via `PyJWKClient` against Firebase's public JWKS endpoint (`https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com`)
+- Validates `iss` (issuer) and `aud` (audience) claims against `FIREBASE_PROJECT_ID` from `.env`
 - Queries `users` table for matching `firebase_uid` where `is_active = True`
 - Returns the user row (includes `role`)
 - Raises `401` if token is missing, expired, or invalid
 - Raises `403` if `firebase_uid` not found in `users` or `is_active = False`
 
 **`require_role(allowed_roles: list[str])` — dependency factory**
-- Returns a FastAPI dependency
-- Calls `verify_firebase_token` internally
+- Returns a FastAPI dependency function with signature `current_user: User = Depends(verify_firebase_token)` — uses FastAPI's `Depends()` so DB session lifecycle is managed correctly by the framework
 - Raises `403` if `current_user.role` is not in `allowed_roles`
 - Usage: `dependencies=[Depends(require_role(["office_staff", "supervisor", "admin"]))]`
 
-**Firebase Admin SDK initialization**
-- Initialized on module import using credentials from `.env`
-- Credentials: `FIREBASE_PROJECT_ID`, `FIREBASE_PRIVATE_KEY`, `FIREBASE_CLIENT_EMAIL`
+**Firebase token verification — JWKS approach (actual implementation)**
+- Firebase service account key creation was blocked by org policy, so `firebase-admin` SDK is not used for verification.
+- `PyJWKClient` (from `pyjwt[crypto]`) fetches and caches Firebase's public RSA keys from the JWKS endpoint.
+- Only required env var: `FIREBASE_PROJECT_ID`.
+- No service account JSON file needed. No `FIREBASE_PRIVATE_KEY` or `FIREBASE_CLIENT_EMAIL`.
 
 ### Role Matrix
 
@@ -127,10 +131,10 @@ No self-registration. A valid Firebase account with no matching `users` row gets
 ## Dependencies
 
 **Frontend (npm):**
-- `firebase` — Firebase JS SDK (Auth)
+- `firebase` — Firebase JS SDK (Auth) — approved by Hamza, 2026-05-12
 
 **Backend (pip):**
-- `firebase-admin` — Firebase Admin SDK (JWT verification)
+- `pyjwt`, `cryptography`, `requests` — JWKS-based Firebase JWT verification (firebase-admin SDK not used due to org policy blocking service account key creation)
 
 ---
 

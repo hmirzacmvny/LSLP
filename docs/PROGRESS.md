@@ -124,6 +124,12 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 5. **Firebase service account key creation blocked by org policy** — switched to JWKS-based token verification using `PyJWKClient` against Firebase's public key endpoint. Only requires `FIREBASE_PROJECT_ID` in `.env`. No service account JSON needed.
 6. **Firebase Admin SDK crashes at import if credentials missing** — wrapped initialization in try/except; error is surfaced at request time (500), not import time.
 
+### Phase 2.1 E2E — confirmed 2026-05-13
+- Unauthenticated users are redirected to `/login`; after sign-in, redirect back to the intended page ✅
+- Bearer token is attached to all API calls; backend accepts authenticated requests ✅
+- Unauthenticated API requests return `{"detail": "Not authenticated"}` (401) ✅
+- Role enforcement confirmed: `field_crew` cannot POST outreach (403), `admin` can ✅
+
 ---
 
 ## Frontend — `C:\lslp\frontend\`

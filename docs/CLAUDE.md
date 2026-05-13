@@ -189,6 +189,10 @@ old_value, new_value, changed_by, changed_at
 - 404 for missing resources, 422 for validation errors, 500 only for unhandled bugs
 - CORS allows `http://localhost:5173` (Vite dev server) for now
 
+**Auth convention:**
+- Token verification uses JWKS (`PyJWKClient` against Firebase's public key endpoint). Only `FIREBASE_PROJECT_ID` is needed in `.env`.
+- Never switch this to the Firebase Admin SDK service account key approach — org policy blocks service account key creation and this approach is confirmed working.
+
 **Server-side enforced fields (never trust client):**
 - `visited_at` on visits
 - `attempt_number` on outreach

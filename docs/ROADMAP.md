@@ -6,13 +6,15 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Pre-phase hygiene tasks — all done except one:
+Phase 2.1 is fully complete and e2e confirmed. **Next: Phase 2.2 — PWA Setup.**
+
+Pre-phase hygiene tasks — all complete:
 
 1. ~~**Initialize Git.**~~ ✅ Done — baseline committed on `main`.
 2. ~~**Create `.env.example`.**~~ ✅ Done.
 3. ~~**Initialize Alembic.**~~ ✅ Done — DB stamped at baseline `6069791d1b62`.
-4. **Test the login flow end-to-end.** Start both servers, navigate to `http://localhost:5173`, confirm redirect to `/login`, sign in with the admin account, confirm the dashboard loads and API calls succeed with a Bearer token.
-5. **Add an `outreach_log` API edge case.** When a property already has 4 attempts and a 5th comes in, the `attempt_number` calculation should still work (we tested up to 4 because that's the imported data, but the new schema supports unlimited).
+4. ~~**Test the login flow end-to-end.**~~ ✅ Done — unauthenticated requests return `{"detail": "Not authenticated"}` (401); role enforcement confirmed 2026-05-13.
+5. **Add an `outreach_log` API edge case.** When a property already has 4 attempts and a 5th comes in, the `attempt_number` calculation should still work (we tested up to 4 because that's the imported data, but the new schema supports unlimited). Defer until Phase 2 wrap-up.
 
 ---
 
@@ -31,7 +33,7 @@ Pre-phase hygiene tasks — all done except one:
 - [x] Add auth dependencies to all protected endpoints per role matrix
 - [x] Update `lib/api.js` to attach `Authorization: Bearer <token>` to every request
 - [x] Admin account created in Firebase Auth + `users` table
-- [ ] **Test end-to-end:** login flow works, unauthenticated requests get `401`, role enforcement confirmed
+- [x] **Test end-to-end:** login flow works, unauthenticated requests get `{"detail": "Not authenticated"}` (401), role enforcement confirmed 2026-05-13
 
 > **Note:** Firebase service account key creation was blocked by org policy. Token verification uses Firebase's public JWKS endpoint via `PyJWKClient`. Only `FIREBASE_PROJECT_ID` is needed in `.env`.
 
