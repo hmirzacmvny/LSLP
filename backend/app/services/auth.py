@@ -44,7 +44,7 @@ async def verify_firebase_token(
             detail="Invalid or expired token",
         )
 
-    firebase_uid = decoded.get("uid")
+    firebase_uid = decoded.get("sub")
     user = db.query(User).filter(
         User.firebase_uid == firebase_uid,
         User.is_active == True,
