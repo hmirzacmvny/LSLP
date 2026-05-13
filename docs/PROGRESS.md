@@ -114,6 +114,9 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `alembic/env.py` | Loads `.env`, imports all models, sets `target_metadata` | ✅ Configured |
 | `alembic/versions/6069791d1b62_baseline.py` | Empty baseline — DB stamped here, no ops | ✅ Committed |
 
+### Bugs fixed during Phase 2.3
+7. **CORS preflight 400 on offline sync POST** — `main.py` only allowed `http://localhost:5173`. Browser sent the sync POST from `http://127.0.0.1:5173` (a different origin). Fixed by adding `http://127.0.0.1:5173` to `allow_origins`. Auth token is correctly attached by the shared Axios interceptor — no changes needed in `sync.js`.
+
 ### Bugs fixed during Phase 1 (don't reintroduce these)
 1. **`access_granted` type mismatch** — was `Boolean`, but real data contains values like "No Answer" and "Scheduled". Changed column type to `String` in both model and Pydantic schema.
 2. **`initials` null Pydantic validation** — moved `model_config = {"from_attributes": True}` from `VisitResponse` up to `VisitBase`.
