@@ -5,12 +5,15 @@ export async function getPendingCount() {
   return db.pendingVisits.where('syncStatus').equals('pending').count()
 }
 
-async function syncPendingVisits() {
+export async function syncPendingVisits() {
   const pending = await db.pendingVisits
     .where('syncStatus')
     .equals('pending')
     .toArray()
 
+  if (pending.length === 0) return
+
+  let failedCount = 0
   for (const record of pending) {
     try {
       const formData = new FormData()
@@ -24,7 +27,16 @@ async function syncPendingVisits() {
     } catch (err) {
       console.error(`[sync] Failed to sync visit id=${record.id}:`, err)
       await db.pendingVisits.update(record.id, { syncStatus: 'failed' })
+      failedCount++
     }
+  }
+
+  if (failedCount === 0) {
+    window.dispatchEvent(new CustomEvent('lslp:sync-success'))
+  } else {
+    window.dispatchEvent(
+      new CustomEvent('lslp:sync-failed', { detail: { count: failedCount } })
+    )
   }
 }
 

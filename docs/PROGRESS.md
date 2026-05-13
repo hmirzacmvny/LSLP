@@ -221,7 +221,14 @@ tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
 **Sync behavior:**
 - On reconnect: drains all `syncStatus = "pending"` records, POSTs each as `multipart/form-data`, deletes on success, marks `failed` on error
 - Failures do not crash the sync loop — remaining records continue to sync
-- Badge clears automatically when the poll interval fires after sync completes
+- `syncPendingVisits` is exported — called by `initSync` on `online` event and directly by Navbar retry button
+
+**Real-time Navbar sync indicator (event-driven, no polling):**
+- Offline save → `lslp:sync-pending` dispatched from `NewVisit.jsx` → badge appears immediately
+- Sync success → `lslp:sync-success` dispatched → badge clears, green "✅ Synced" shows 3 s then hides
+- Sync failure → `lslp:sync-failed` dispatched → red "⚠️ Sync failed — X records pending" + Retry button
+- Retry button calls `syncPendingVisits()` directly and resets failure state
+- No `setInterval` polling
 
 ### `src/pages/FieldApp/`
 Empty — Phase 2.4+ work has not started.

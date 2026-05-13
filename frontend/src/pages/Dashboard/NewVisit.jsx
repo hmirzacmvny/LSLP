@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { createVisit } from '../../lib/api'
 import { db } from '../../lib/db'
+import { getPendingCount } from '../../lib/sync'
 
 export default function NewVisit() {
   const navigate = useNavigate()
@@ -49,6 +50,8 @@ export default function NewVisit() {
           savedAt: new Date().toISOString(),
           syncStatus: 'pending',
         })
+        const count = await getPendingCount()
+        window.dispatchEvent(new CustomEvent('lslp:sync-pending', { detail: { count } }))
         setOfflineSaved(true)
         setTimeout(() => navigate(-1), 3000)
       } catch (err) {

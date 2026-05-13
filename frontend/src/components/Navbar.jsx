@@ -1,21 +1,71 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { getPendingCount } from '../lib/sync'
+import { getPendingCount, syncPendingVisits } from '../lib/sync'
 
 export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
   const [pendingCount, setPendingCount] = useState(0)
+  const [syncStatus, setSyncStatus] = useState(null) // null | 'success' | 'failed'
+  const [failedCount, setFailedCount] = useState(0)
 
   useEffect(() => {
-    const check = async () => {
-      const count = await getPendingCount()
-      setPendingCount(count)
+    getPendingCount().then(setPendingCount)
+
+    const onSuccess = () => {
+      setPendingCount(0)
+      setSyncStatus('success')
+      setTimeout(() => setSyncStatus(null), 3000)
     }
-    check()
-    const interval = setInterval(check, 30000)
-    return () => clearInterval(interval)
+
+    const onFailed = (e) => {
+      setSyncStatus('failed')
+      setFailedCount(e.detail.count)
+    }
+
+    const onPending = (e) => {
+      setPendingCount(e.detail.count)
+    }
+
+    window.addEventListener('lslp:sync-success', onSuccess)
+    window.addEventListener('lslp:sync-failed', onFailed)
+    window.addEventListener('lslp:sync-pending', onPending)
+
+    return () => {
+      window.removeEventListener('lslp:sync-success', onSuccess)
+      window.removeEventListener('lslp:sync-failed', onFailed)
+      window.removeEventListener('lslp:sync-pending', onPending)
+    }
   }, [])
+
+  const handleRetry = () => {
+    setSyncStatus(null)
+    syncPendingVisits()
+  }
+
+  let syncIndicator = null
+  if (syncStatus === 'success') {
+    syncIndicator = (
+      <span className="text-green-300 text-sm font-medium">
+        ✅ Synced
+      </span>
+    )
+  } else if (syncStatus === 'failed') {
+    syncIndicator = (
+      <span className="flex items-center gap-2 text-red-300 text-sm font-medium">
+        ⚠️ Sync failed — {failedCount} record{failedCount !== 1 ? 's' : ''} pending
+        <button onClick={handleRetry} className="underline hover:text-red-100">
+          Retry
+        </button>
+      </span>
+    )
+  } else if (pendingCount > 0) {
+    syncIndicator = (
+      <span className="text-orange-300 text-sm font-medium">
+        🔄 {pendingCount} pending sync
+      </span>
+    )
+  }
 
   return (
     <nav className="bg-blue-900 text-white px-6 py-4 flex items-center justify-between shadow-lg">
@@ -32,11 +82,7 @@ export default function Navbar() {
       </div>
 
       {/* Sync status */}
-      {pendingCount > 0 && (
-        <span className="text-orange-300 text-sm font-medium">
-          🔄 {pendingCount} pending sync
-        </span>
-      )}
+      {syncIndicator}
 
       {/* Nav Links */}
       <div className="flex items-center gap-2">
@@ -61,14 +107,14 @@ export default function Navbar() {
           ➕ Log Visit
         </button>
         <button
-            onClick={() => navigate('/outreach/new')}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                location.pathname === '/outreach/new'
-                    ? 'bg-blue-700 text-white'
-                    : 'text-blue-200 hover:bg-blue-800'
-    }`}
-    >
-        📋 Log Outreach
+          onClick={() => navigate('/outreach/new')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            location.pathname === '/outreach/new'
+              ? 'bg-blue-700 text-white'
+              : 'text-blue-200 hover:bg-blue-800'
+          }`}
+        >
+          📋 Log Outreach
         </button>
       </div>
     </nav>
