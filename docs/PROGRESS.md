@@ -115,8 +115,9 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `alembic/versions/6069791d1b62_baseline.py` | Empty baseline — DB stamped here, no ops | ✅ Committed |
 
 ### Bugs fixed during Phase 2.3
-7. **CORS preflight 400 on offline sync POST**
-8. **403 on all protected endpoints** — `auth.py` extracted the Firebase UID from `decoded.get("uid")` but Firebase JWTs store the user ID in `sub`, not `uid`. Changed to `decoded.get("sub")`. Token decoding was succeeding; only the DB lookup was failing. — `main.py` only allowed `http://localhost:5173`. Browser sent the sync POST from `http://127.0.0.1:5173` (a different origin). Fixed by adding `http://127.0.0.1:5173` to `allow_origins`. Auth token is correctly attached by the shared Axios interceptor — no changes needed in `sync.js`.
+7. **CORS preflight 400 on offline sync POST** — `main.py` only allowed `http://localhost:5173`. The browser sent the sync POST from `http://127.0.0.1:5173` (a different origin). Fixed by adding `http://127.0.0.1:5173` to `allow_origins`. Auth token is correctly attached by the shared Axios interceptor — no changes needed in `sync.js`.
+8. **403 on all protected endpoints** — `auth.py` extracted the Firebase UID from `decoded.get("uid")` but Firebase JWTs store the user ID in `sub`, not `uid`. Changed to `decoded.get("sub")`. Token decoding was succeeding; only the DB lookup was failing.
+9. **"Saved Locally" screen navigated to property detail while offline** — property detail makes an API call that fails when offline, showing "property not found." Fixed by navigating to `/` (home/search page) instead, which requires no API call. Online success path still navigates to the property page.
 
 ### Bugs fixed during Phase 1 (don't reintroduce these)
 1. **`access_granted` type mismatch** — was `Boolean`, but real data contains values like "No Answer" and "Scheduled". Changed column type to `String` in both model and Pydantic schema.
@@ -144,16 +145,17 @@ React 18 + Vite + Tailwind v4 (via `@tailwindcss/postcss`) + React Router DOM + 
 ### Installed packages
 ```
 axios, react-router-dom, @tanstack/react-query,
-tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
+tailwindcss, @tailwindcss/postcss, autoprefixer, postcss,
+firebase, vite-plugin-pwa, dexie
 ```
 
 ### Top-level
 | File | Purpose | Status |
 |---|---|---|
-| `vite.config.js` | Vite config with React plugin | ✅ Default |
+| `vite.config.js` | Vite config — React plugin + VitePWA with manifest + Workbox Service Worker | ✅ Updated Phase 2.2 |
 | `postcss.config.js` | Configures `@tailwindcss/postcss` and `autoprefixer` | ✅ Complete |
 | `src/index.css` | Single line: `@import "tailwindcss";` | ✅ Complete |
-| `src/main.jsx` | React root render | ✅ Default |
+| `src/main.jsx` | React root render + calls `initSync()` on app load | ✅ Updated Phase 2.3 |
 | `src/App.jsx` | Router setup — `/login` public, all other routes wrapped in `<RequireAuth>` | ✅ Updated Phase 2.1 |
 | `.env.local` | Firebase web SDK keys (`VITE_*`) — NOT committed | ✅ Created |
 
@@ -166,7 +168,7 @@ tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
 ### `src/components/`
 | File | Purpose | Status |
 |---|---|---|
-| `Navbar.jsx` | Top navigation with logo, Properties / Log Visit / Log Outreach buttons | ✅ Complete |
+| `Navbar.jsx` | Top nav + real-time sync indicator (event-driven: orange pending, green success 3 s, red fail + Retry button) | ✅ Updated Phase 2.3 |
 | `RequireAuth.jsx` | Auth gate — loading state during Firebase init, redirect to `/login` if unauthed | ✅ New Phase 2.1 |
 
 ### `src/pages/Dashboard/`
@@ -208,9 +210,9 @@ tailwindcss, @tailwindcss/postcss, autoprefixer, postcss, firebase
 | File | Purpose | Status |
 |---|---|---|
 | `src/lib/db.js` | Dexie DB `lslpOfflineDB` — `pendingVisits` table (++id, syncStatus, savedAt indexed) | ✅ New |
-| `src/lib/sync.js` | `initSync()` — listens for `window online` event, drains pending visits to API; `getPendingCount()` — returns count of pending records | ✅ New |
-| `src/pages/Dashboard/NewVisit.jsx` | Submit handler now checks `navigator.onLine`: offline → saves to IndexedDB + shows "Saved Locally" screen; online → existing API POST behavior unchanged | ✅ Updated |
-| `src/components/Navbar.jsx` | Polls `getPendingCount()` every 30 s; shows "🔄 X pending sync" in orange when > 0 | ✅ Updated |
+| `src/lib/sync.js` | `initSync()` — registers `online` listener; `syncPendingVisits()` — drains pending visits, dispatches `lslp:sync-success` or `lslp:sync-failed`; `getPendingCount()` | ✅ New |
+| `src/pages/Dashboard/NewVisit.jsx` | Offline path: saves to IndexedDB, dispatches `lslp:sync-pending`, shows "Saved Locally" screen, navigates to `/` after 2 s; online path unchanged | ✅ Updated |
+| `src/components/Navbar.jsx` | Event-driven sync indicator — no polling; listens for `lslp:sync-*` events; shows orange pending / green success (3 s) / red fail + Retry | ✅ Updated |
 | `src/main.jsx` | Calls `initSync()` on app load to register the `online` listener | ✅ Updated |
 
 **Offline record shape** (stored in IndexedDB):
@@ -285,4 +287,4 @@ Role enforcement is active:
 
 - ✅ Git initialized at `C:\lslp\`. Branch: `main`.
 - `.gitignore` covers `venv/`, `node_modules/`, `.env`, `.env.local`, `uploads/`, `__pycache__/`.
-- All Phase 1 + Phase 2.1 work committed.
+- All work through Phase 2.3 (including bug fixes) committed to `main`.

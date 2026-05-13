@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1, 2.2, and 2.3 are complete. **Next: Phase 2.4 — PWA-Specific Field Form.**
+Phases 2.1, 2.2, and 2.3 are complete including bug fixes. **Next: Phase 2.4 — PWA-Specific Field Form.**
 
 Pre-phase hygiene tasks — all complete:
 
@@ -50,8 +50,11 @@ Pre-phase hygiene tasks — all complete:
 - [x] Create `src/lib/db.js` — `lslpOfflineDB` with `pendingVisits` table
 - [x] Update `NewVisit.jsx` — offline path saves to IndexedDB, shows "Saved Locally" screen
 - [x] Create `src/lib/sync.js` — `online` listener drains pending visits; `getPendingCount()` exported
-- [x] Add sync status indicator to Navbar — polls every 30 s, shows "🔄 X pending sync" in orange
-- [ ] Test on device: turn off WiFi, log a visit, reconnect, verify sync completes
+- [x] Add real-time sync indicator to Navbar — event-driven (no polling); orange pending / green success 3 s / red fail + Retry button
+- [x] Fix: offline "Saved Locally" navigates to `/` instead of property detail (which requires API)
+- [x] Fix: CORS preflight 400 — added `http://127.0.0.1:5173` to `allow_origins` in `main.py`
+- [x] Fix: 403 on all endpoints — Firebase JWT UID field is `sub` not `uid` in `auth.py`
+- [ ] Test on device: turn off WiFi, log a visit, reconnect, verify sync fires and badge clears
 
 ### 2.4 PWA-Specific Field Form (3 days)
 - [ ] Build `src/pages/FieldApp/FieldVisitForm.jsx` — a streamlined, mobile-first version of `NewVisit.jsx`:
