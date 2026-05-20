@@ -6,6 +6,7 @@ import NewVisit from './pages/Dashboard/NewVisit'
 import NewOutreach from './pages/Dashboard/NewOutreach'
 import Login from './pages/Login'
 import RequireAuth from './components/RequireAuth'
+import FieldVisitForm from './pages/FieldApp/FieldVisitForm'
 
 
 function App() {
@@ -13,6 +14,16 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        {/* Field app — no RequireAuth; auth for field crew is Phase 2.5+ */}
+        <Route
+          path="/field"
+          element={
+            <div className="min-h-screen bg-gray-50">
+              <Navbar />
+              <FieldVisitForm />
+            </div>
+          }
+        />
         <Route
           path="/*"
           element={

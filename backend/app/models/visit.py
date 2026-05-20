@@ -15,5 +15,6 @@ class Visit(Base):
     property_type = Column(String)
     notes = Column(Text)
     photo_urls = Column(JSONB)
+    gps_coordinates = Column(JSONB)
     work_order_id = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1 Auth ✅, 2.2 PWA ✅, 2.3 Offline ✅, field form next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.4 ✅, customer portal next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -232,8 +232,45 @@ firebase, vite-plugin-pwa, dexie
 - Retry button calls `syncPendingVisits()` directly and resets failure state
 - No `setInterval` polling
 
-### `src/pages/FieldApp/`
-Empty — Phase 2.4+ work has not started.
+### Phase 2.4 — PWA Field Visit Form
+
+| File | Purpose | Status |
+|---|---|---|
+| `src/pages/FieldApp/FieldVisitForm.jsx` | Mobile-first field visit form — 2-step: property search → log visit | ✅ New |
+| `src/App.jsx` | `/field` route added outside `<RequireAuth>`; imports `FieldVisitForm` | ✅ Updated |
+| `src/components/Navbar.jsx` | "📱 Field App" button added | ✅ Updated |
+| `backend/app/models/visit.py` | `gps_coordinates = Column(JSONB)` added | ✅ Updated |
+| `backend/app/schemas/visit.py` | `gps_coordinates: Optional[dict] = None` added to `VisitBase` | ✅ Updated |
+| `backend/app/api/visits.py` | `gps_coordinates: Optional[str] = Form(None)` param added; parsed with `json.loads()` before save | ✅ Updated |
+
+**FieldVisitForm behavior:**
+
+*Step 1 — Find Property*
+- Search input fires after 3 chars (300 ms debounce) → `GET /api/properties/?search=...&limit=10`
+- Dropdown shows address + account number for each match
+- Selecting a result shows a confirmation card (address, account, hs/ss service, status)
+- Crew can also type an account number directly — Continue button appears at 6+ chars
+- "Looks right — Continue →" moves to Step 2
+
+*Step 2 — Log Visit*
+- Property address shown in header as context; tapping it returns to Step 1
+- GPS: `navigator.geolocation.getCurrentPosition()` fires on mount; stored as `{ lat, lng }`, serialized to JSON string for FormData; shown as "📍 Location captured / unavailable"
+- Access Granted: tap buttons (Yes / No / No Answer / Refused / Scheduled)
+- Verification Outcome: tap buttons with color coding (Lead=red, Copper=green, Galvanized=orange)
+- Property Type: dropdown
+- Initials + Notes: standard inputs
+- Photos: hidden `<input capture="environment">` triggered by "📷 Take Photo" button; up to 3; thumbnail previews with remove button
+- Submit: online → POST to API; offline → IndexedDB + `lslp:sync-pending` event; success → 2 s confirmation then resets to Step 1 (no navigation — ready for next property)
+
+**DB migration required — run this in pgAdmin before using GPS:**
+```sql
+ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;
+```
+
+**Known limitation:** `/field` is outside `<RequireAuth>` but all API calls still require Firebase auth. Field crew must be logged in (prior session) for property search to work. Auth for field crew is Phase 2.5+.
+
+### `src/pages/Portal/`
+Empty — Phase 2.5 customer portal work has not started.
 
 ### `src/pages/Portal/`
 Empty — Phase 2.5 customer portal work has not started.
@@ -272,7 +309,7 @@ Role enforcement is active:
 
 - ✅ **PWA manifest and Service Worker.** Phase 2.2 complete. Icons are placeholders — replace with real artwork before production.
 - ✅ **Offline mode.** Phase 2.3 complete. `pendingVisits` stored in IndexedDB; sync fires on reconnect; Navbar badge shows pending count.
-- 🔲 **No field-optimized form.** Phase 2.4.
+- ✅ **Field-optimized form.** Phase 2.4 complete. `/field` route, 2-step form, GPS capture, camera, offline-aware. Run `ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;` in pgAdmin.
 - 🔲 **No customer portal.** Phase 2.5.
 - 🔲 **No customer submission review queue.** Phase 2.6.
 - 🔲 **No audit log triggers.** The `audit_log` table exists but nothing writes to it yet.

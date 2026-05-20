@@ -6,7 +6,12 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1, 2.2, and 2.3 are complete including bug fixes. **Next: Phase 2.4 — PWA-Specific Field Form.**
+Phases 2.1–2.4 are complete. **Next: Phase 2.5 — Customer Portal.**
+
+**Before next session:** Run this in pgAdmin to add GPS support to the visits table:
+```sql
+ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;
+```
 
 Pre-phase hygiene tasks — all complete:
 
@@ -56,14 +61,17 @@ Pre-phase hygiene tasks — all complete:
 - [x] Fix: 403 on all endpoints — Firebase JWT UID field is `sub` not `uid` in `auth.py`
 - [ ] Test on device: turn off WiFi, log a visit, reconnect, verify sync fires and badge clears
 
-### 2.4 PWA-Specific Field Form (3 days)
-- [ ] Build `src/pages/FieldApp/FieldVisitForm.jsx` — a streamlined, mobile-first version of `NewVisit.jsx`:
-  - Larger touch targets
-  - Camera capture via `<input type="file" accept="image/*" capture="environment">`
-  - GPS coordinates (optional, via `navigator.geolocation`)
-  - Property lookup by address auto-complete
-- [ ] Add route `/field` in `App.jsx` that defaults to this form for users with `field_crew` role
-- [ ] Test on iPad
+### 2.4 PWA-Specific Field Form ✅ COMPLETE (2026-05-20)
+- [x] Build `src/pages/FieldApp/FieldVisitForm.jsx` — 2-step form: property search + visit logging
+- [x] Camera capture via `<input type="file" accept="image/*" capture="environment">` (up to 3 photos)
+- [x] GPS via `navigator.geolocation` — stored as `{ lat, lng }` JSONB; silent fail if denied
+- [x] Property search autocomplete — 300 ms debounce, dropdown, confirmation card
+- [x] Tap buttons for Access Granted and Verification Outcome (color-coded outcomes)
+- [x] Add `gps_coordinates JSONB` to Visit model + schema + POST endpoint
+- [x] Add route `/field` in `App.jsx` outside `<RequireAuth>` (auth for field crew is Phase 2.5+)
+- [x] Add "📱 Field App" button to Navbar
+- [ ] Run `ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;` in pgAdmin
+- [ ] Test on iPad: search property, log visit with photo + GPS, test offline flow
 
 ### 2.5 Customer Portal (1 week)
 - [ ] Build `src/pages/Portal/SubmitForm.jsx` — public-facing form (no auth required):

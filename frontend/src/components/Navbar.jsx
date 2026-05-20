@@ -116,6 +116,16 @@ export default function Navbar() {
         >
           📋 Log Outreach
         </button>
+        <button
+          onClick={() => navigate('/field')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            location.pathname === '/field'
+              ? 'bg-blue-700 text-white'
+              : 'text-blue-200 hover:bg-blue-800'
+          }`}
+        >
+          📱 Field App
+        </button>
       </div>
     </nav>
   )

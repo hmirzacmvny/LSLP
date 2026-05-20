@@ -1,3 +1,4 @@
+import json
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -42,6 +43,7 @@ def create_visit(
     verification_outcome: Optional[str] = Form(None),
     property_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
+    gps_coordinates: Optional[str] = Form(None),
     photos: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
     _=Depends(verify_firebase_token),
@@ -61,6 +63,14 @@ def create_visit(
                 path = save_photo(photo, "field", account_number)
                 photo_urls.append(path)
 
+    # Parse GPS coordinates from JSON string (multipart forms can't send nested objects)
+    gps = None
+    if gps_coordinates:
+        try:
+            gps = json.loads(gps_coordinates)
+        except (json.JSONDecodeError, ValueError):
+            pass
+
     # Create the visit record
     visit = Visit(
         account_number=account_number,
@@ -69,7 +79,8 @@ def create_visit(
         verification_outcome=verification_outcome,
         property_type=property_type,
         notes=notes,
-        photo_urls=photo_urls
+        photo_urls=photo_urls,
+        gps_coordinates=gps,
     )
 
     db.add(visit)

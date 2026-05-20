@@ -12,6 +12,7 @@ class VisitBase(BaseModel):
     property_type: Optional[str] = None
     notes: Optional[str] = None
     photo_urls: Optional[List[str]] = None
+    gps_coordinates: Optional[dict] = None
     work_order_id: Optional[str] = None
 
 class VisitCreate(VisitBase):
