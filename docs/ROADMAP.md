@@ -6,9 +6,9 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.4 are complete. **Next: Phase 2.5 — Customer Portal.**
+Phases 2.1–2.5 are complete. **Next: Phase 2.6 — Submission Review Queue.**
 
-**Before next session:** Run this in pgAdmin to add GPS support to the visits table:
+**Pending action:** Run this in pgAdmin if not done yet:
 ```sql
 ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;
 ```
@@ -73,17 +73,13 @@ Pre-phase hygiene tasks — all complete:
 - [ ] Run `ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;` in pgAdmin
 - [ ] Test on iPad: search property, log visit with photo + GPS, test offline flow
 
-### 2.5 Customer Portal (1 week)
-- [ ] Build `src/pages/Portal/SubmitForm.jsx` — public-facing form (no auth required):
-  - Address lookup against `properties` table
-  - Submitter name, contact info, year constructed, prior line work
-  - Up to 3 photo uploads
-  - Privacy notice + submit button
-- [ ] Add route `/submit` in `App.jsx` (outside `<RequireAuth>`)
-- [ ] Backend: extend `app/api/` with `submissions.py`:
-  - `POST /api/submissions/` — accepts multipart form, uses API key auth (not Firebase JWT), writes to `customer_submissions` table
-- [ ] Add API key middleware in `app/services/auth.py` — separate from Firebase JWT
-- [ ] Store API key in `.env` (`PORTAL_API_KEY=...`) and embed in the portal page at build time
+### 2.5 Customer Portal ✅ COMPLETE (2026-05-22)
+- [x] `src/pages/Portal/SubmitForm.jsx` — 3-step public form (property search, contact info, photos)
+- [x] `/submit` route in `App.jsx` — fully public, no Navbar, no RequireAuth
+- [x] `app/api/submissions.py` — POST + GET + PATCH endpoints
+- [x] `app/models/submission.py` + `app/schemas/submission.py`
+- [x] `GET /api/submissions/property-search` — portal-key-gated property lookup (address only)
+- [x] `PORTAL_API_KEY=lslp-portal-2026` — add to `backend/.env`; key checked via `X-Portal-API-Key` header
 
 ### 2.6 Customer Submission Review Queue (3 days)
 - [ ] Build `src/pages/Dashboard/SubmissionsQueue.jsx` — table of pending submissions

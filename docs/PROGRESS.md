@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.4 ✅, customer portal next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.5 ✅, review queue next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -269,11 +269,44 @@ ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;
 
 **Known limitation:** `/field` is outside `<RequireAuth>` but all API calls still require Firebase auth. Field crew must be logged in (prior session) for property search to work. Auth for field crew is Phase 2.5+.
 
-### `src/pages/Portal/`
-Empty — Phase 2.5 customer portal work has not started.
+### Phase 2.5 — Customer Portal
 
-### `src/pages/Portal/`
-Empty — Phase 2.5 customer portal work has not started.
+**New backend files:**
+
+| File | Purpose | Status |
+|---|---|---|
+| `app/models/submission.py` | SQLAlchemy model for `customer_submissions` table | ✅ New |
+| `app/schemas/submission.py` | `SubmissionCreate`, `SubmissionResponse`, `SubmissionReview` | ✅ New |
+| `app/api/submissions.py` | All submission endpoints (see below) | ✅ New |
+| `main.py` | Registered `submissions.router` at `/api/submissions` | ✅ Updated |
+| `.env.example` | Added `PORTAL_API_KEY=` | ✅ Updated |
+
+**Submissions API endpoints:**
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /api/submissions/property-search?search=...` | Portal API key | Public property search — address only, no internal fields |
+| `POST /api/submissions/` | Portal API key | Create customer submission with optional photos |
+| `GET /api/submissions/` | Firebase JWT + office_staff+ | List all; filter by `review_status` query param |
+| `GET /api/submissions/{id}` | Firebase JWT + office_staff+ | Single submission |
+| `PATCH /api/submissions/{id}/review` | Firebase JWT + office_staff+ | Set `review_status`, `reviewed_by`, `reviewed_at` |
+
+Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_KEY=lslp-portal-2026` to `backend/.env`.
+
+**New frontend files:**
+
+| File | Purpose | Status |
+|---|---|---|
+| `src/pages/Portal/SubmitForm.jsx` | 3-step public portal — no Navbar, no auth, standalone page | ✅ New |
+| `src/App.jsx` | `/submit` route added outside `<RequireAuth>`, no Navbar wrapper | ✅ Updated |
+
+**SubmitForm — 3-step flow:**
+- Step 1: Address search (debounced, 3+ chars) → dropdown (address only, no account numbers shown to public) → "Is this your property?" confirmation with Yes/No
+- Step 2: Full name (required), phone/email (required), year constructed (dropdown), prior line work (Yes/No/Not sure tap buttons), notes textarea if Yes
+- Step 3: Up to 3 photos, "Skip photos and submit" option; POST with portal API key; success screen shows reference number (`#id`)
+- All `fetch` calls use `X-Portal-API-Key` header directly — does not use the shared `api.js` Axios instance (no Firebase token needed)
+
+**Configuration required:** Add `PORTAL_API_KEY=lslp-portal-2026` to `backend/.env`
 
 ---
 
@@ -310,7 +343,7 @@ Role enforcement is active:
 - ✅ **PWA manifest and Service Worker.** Phase 2.2 complete. Icons are placeholders — replace with real artwork before production.
 - ✅ **Offline mode.** Phase 2.3 complete. `pendingVisits` stored in IndexedDB; sync fires on reconnect; Navbar badge shows pending count.
 - ✅ **Field-optimized form.** Phase 2.4 complete. `/field` route, 2-step form, GPS capture, camera, offline-aware. Run `ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;` in pgAdmin.
-- 🔲 **No customer portal.** Phase 2.5.
+- ✅ **Customer portal.** Phase 2.5 complete. `/submit` public 3-step form; portal API key auth; submissions stored in `customer_submissions`.
 - 🔲 **No customer submission review queue.** Phase 2.6.
 - 🔲 **No audit log triggers.** The `audit_log` table exists but nothing writes to it yet.
 - 🔲 **No Springbrook sync, no Brightly auto-WO, no ArcGIS export endpoint.** All Phase 3.

@@ -7,6 +7,7 @@ import NewOutreach from './pages/Dashboard/NewOutreach'
 import Login from './pages/Login'
 import RequireAuth from './components/RequireAuth'
 import FieldVisitForm from './pages/FieldApp/FieldVisitForm'
+import SubmitForm from './pages/Portal/SubmitForm'
 
 
 function App() {
@@ -14,6 +15,8 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
+        {/* Customer portal — fully public, no Navbar */}
+        <Route path="/submit" element={<SubmitForm />} />
         {/* Field app — no RequireAuth; auth for field crew is Phase 2.5+ */}
         <Route
           path="/field"

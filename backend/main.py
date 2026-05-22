@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.api import properties, visits, outreach
+from app.api import properties, visits, outreach, submissions
 
 Base.metadata.create_all(bind=engine)
 
@@ -15,8 +15,10 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://127.0.0.1:5173",
-    ],
+        "http://127.0.0.1:5174",
+],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -25,6 +27,7 @@ app.add_middleware(
 app.include_router(properties.router, prefix="/api/properties", tags=["Properties"])
 app.include_router(visits.router, prefix="/api/visits", tags=["Visits"])
 app.include_router(outreach.router, prefix="/api/outreach", tags=["Outreach"])
+app.include_router(submissions.router, prefix="/api/submissions", tags=["Submissions"])
 
 @app.get("/")
 def root():
