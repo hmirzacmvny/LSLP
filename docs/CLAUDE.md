@@ -139,12 +139,15 @@ created_at, updated_at
 ```
 
 ### `visits` (168 rows)
-One row per field inspection. **`visited_at` is set server-side — never accept it from the client.**
+One row per field inspection. **`visited_at` is set server-side — never accept it from the client.** **`initials` and `created_by_uid` come from the authenticated user's profile — never accept them from the client.**
 ```
-id (PK SERIAL), account_number (FK), initials, visited_at (server-set),
+id (PK SERIAL), account_number (FK), initials (from user profile),
+created_by_uid (VARCHAR(128), nullable — FK to users.firebase_uid),
+visited_at (server-set),
 access_granted (String, NOT Boolean — values include "Yes", "No",
 "No Answer", "Scheduled", "No (Refused)"), verification_outcome,
-property_type, notes, photo_urls (JSONB), work_order_id, created_at
+property_type, notes, photo_urls (JSONB), gps_coordinates (JSONB),
+work_order_id, created_at
 ```
 
 ### `outreach_log` (9,485 rows)
@@ -163,10 +166,11 @@ photo_urls (JSONB), review_status (DEFAULT 'Pending'),
 reviewed_by, reviewed_at
 ```
 
-### `users` (empty, ready for Phase 2)
+### `users`
 ```
 id (PK SERIAL), firebase_uid (UNIQUE), name, email (UNIQUE),
-role (DEFAULT 'field_crew'), is_active (DEFAULT TRUE), created_at
+initials (VARCHAR(5), nullable), role (DEFAULT 'field_crew'),
+is_active (DEFAULT TRUE), created_at
 ```
 Roles: `field_crew`, `office_staff`, `supervisor`, `admin`.
 
@@ -195,6 +199,8 @@ old_value, new_value, changed_by, changed_at
 
 **Server-side enforced fields (never trust client):**
 - `visited_at` on visits
+- `initials` on visits (set from authenticated user's profile, never from form input)
+- `created_by_uid` on visits (set from authenticated user's Firebase UID)
 - `attempt_number` on outreach
 - `created_at`, `updated_at` everywhere
 - `verified_status` on properties (only updated via specific PATCH logic)
@@ -240,7 +246,7 @@ The survey grid spacing (48px) was chosen because it references engineering grap
 - ❌ Never use `DELETE` without a `WHERE` clause in pgAdmin
 - ❌ Never edit the database schema directly in pgAdmin once Alembic is set up — use migrations
 - ❌ Never reintroduce the wide-format outreach log
-- ❌ Never accept `visited_at` or `attempt_number` from the client
+- ❌ Never accept `visited_at`, `attempt_number`, `initials` (on visits), or `created_by_uid` from the client — these are set server-side from the authenticated user
 - ❌ Never use React Native — we use PWA only
 - ❌ Never suggest microservices, lambdas, or serverless rewrites
 - ❌ Never store photos as base64 in the database — they go in the storage service

@@ -4,12 +4,23 @@ from sqlalchemy.orm import Session
 from typing import List, Optional
 from app.database import get_db
 from app.models.visit import Visit
+from app.models.user import User
 from app.models.property import Property
 from app.schemas.visit import VisitCreate, VisitResponse
 from app.services.storage import save_photo
 from app.services.auth import verify_firebase_token
 
 router = APIRouter()
+
+
+def _attach_email(visit, db: Session):
+    """Attach submitting user's email to a visit for the response."""
+    if visit.created_by_uid:
+        user = db.query(User.email).filter(User.firebase_uid == visit.created_by_uid).first()
+        visit.created_by_email = user[0] if user else None
+    else:
+        visit.created_by_email = None
+    return visit
 
 
 # GET all visits — filterable by account_number
@@ -22,7 +33,10 @@ def get_visits(
     query = db.query(Visit)
     if account_number:
         query = query.filter(Visit.account_number == account_number)
-    return query.order_by(Visit.visited_at.desc()).all()
+    visits = query.order_by(Visit.visited_at.desc()).all()
+    for v in visits:
+        _attach_email(v, db)
+    return visits
 
 
 # GET single visit by id
@@ -31,7 +45,7 @@ def get_single_visit(visit_id: int, db: Session = Depends(get_db), _=Depends(ver
     visit = db.query(Visit).filter(Visit.id == visit_id).first()
     if not visit:
         raise HTTPException(status_code=404, detail="Visit not found")
-    return visit
+    return _attach_email(visit, db)
 
 
 # POST create new visit with optional photo uploads
@@ -46,7 +60,7 @@ def create_visit(
     gps_coordinates: Optional[str] = Form(None),
     photos: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
-    _=Depends(verify_firebase_token),
+    user: User = Depends(verify_firebase_token),
 ):
     # Verify property exists
     prop = db.query(Property).filter(
@@ -71,10 +85,10 @@ def create_visit(
         except (json.JSONDecodeError, ValueError):
             pass
 
-    # Create the visit record
     visit = Visit(
         account_number=account_number,
-        initials=initials,
+        initials=user.initials,
+        created_by_uid=user.firebase_uid,
         access_granted=access_granted,
         verification_outcome=verification_outcome,
         property_type=property_type,
@@ -86,4 +100,4 @@ def create_visit(
     db.add(visit)
     db.commit()
     db.refresh(visit)
-    return visit
+    return _attach_email(visit, db)

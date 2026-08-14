@@ -29,7 +29,7 @@ function ShellRoutes() {
           transition={routeTransition}
         >
           <Routes location={location}>
-            <Route path="/field" element={<FieldVisitForm />} />
+            <Route path="/field" element={<RequireAuth><FieldVisitForm /></RequireAuth>} />
             <Route path="/" element={<RequireAuth><PropertiesList /></RequireAuth>} />
             <Route path="/properties/:accountNumber" element={<RequireAuth><PropertyDetail /></RequireAuth>} />
             <Route path="/visits/new" element={<RequireAuth><NewVisit /></RequireAuth>} />

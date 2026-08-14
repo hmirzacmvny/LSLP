@@ -6,11 +6,13 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.6 are complete. **Next: Phase 2.7 — Phase 2 Wrap-Up.**
+Phases 2.1–2.7 are complete. **Next: Phase 2.8 — Phase 2 Wrap-Up.**
 
-**Pending action:** Run this in pgAdmin if not done yet:
+**Pending action:** Run these in pgAdmin if not done yet:
 ```sql
 ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;
+ALTER TABLE users ADD COLUMN initials VARCHAR(5);
+ALTER TABLE visits ADD COLUMN created_by_uid VARCHAR(128);
 ```
 
 Pre-phase hygiene tasks — all complete:
@@ -93,8 +95,19 @@ Pre-phase hygiene tasks — all complete:
 - [x] Approval flow: reviewer selects material (Lead/Copper/Galvanized/Unknown) → property `verified_status` updated → `audit_log` entry created
 - [x] Rejection flow: optional reason stored in submission notes → property record untouched
 
-### 2.7 Phase 2 Wrap-Up
-- [ ] Update `PROGRESS.md` to reflect all completed work
+### 2.7 Field Crew Authentication & Visit Attribution ✅ COMPLETE (2026-08-14)
+- [x] Added `initials VARCHAR(5)` to `users` table and SQLAlchemy model
+- [x] Added `created_by_uid VARCHAR(128)` to `visits` table and SQLAlchemy model
+- [x] `POST /api/visits/` captures authenticated user — sets `initials` and `created_by_uid` from profile, ignores client values
+- [x] `VisitResponse` extended with `created_by_uid` and `created_by_email` (joined from users; null for historical visits)
+- [x] `/field` route moved inside `<RequireAuth>` — field crew must log in
+- [x] Firebase persistence confirmed as `browserLocalPersistence` (default in web SDK v9+)
+- [x] Initials text input replaced with read-only user identity card (initials + email)
+- [x] PropertyDetail visits table shows submitting email beneath initials for attributed visits
+- [x] `docs/ADDING_USERS.md` — procedure for provisioning field crew accounts
+- [x] Updated `CLAUDE.md` — visit attribution rules, server-enforced fields, schema updates
+
+### 2.8 Phase 2 Wrap-Up
 - [ ] Run a full end-to-end test: customer submits → office reviews → field crew visits → all data persists
 - [ ] Commit Phase 2 to git
 

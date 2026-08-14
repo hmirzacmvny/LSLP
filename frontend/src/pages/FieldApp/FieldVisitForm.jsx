@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { onAuthStateChanged } from 'firebase/auth'
+import { auth } from '../../lib/firebase'
 import { getProperties, createVisit } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
@@ -14,7 +16,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select'
 import {
-  Search, MapPin, Camera, CheckCircle, WifiOff, ArrowLeft, AlertCircle, X,
+  Search, MapPin, Camera, CheckCircle, WifiOff, ArrowLeft, AlertCircle, X, UserCircle,
 } from 'lucide-react'
 
 const stepTransition = { type: 'spring', stiffness: 300, damping: 30 }
@@ -53,11 +55,19 @@ export default function FieldVisitForm() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState(null)
 
+  const [currentUser, setCurrentUser] = useState(null)
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setCurrentUser(firebaseUser)
+    })
+    return unsubscribe
+  }, [])
+
   const [form, setForm] = useState({
     access_granted: '',
     verification_outcome: '',
     property_type: '',
-    initials: '',
     notes: '',
   })
   const [photos, setPhotos] = useState([])
@@ -159,7 +169,7 @@ export default function FieldVisitForm() {
     setSearchResults([])
     setShowDropdown(false)
     setSelectedProperty(null)
-    setForm({ access_granted: '', verification_outcome: '', property_type: '', initials: '', notes: '' })
+    setForm({ access_granted: '', verification_outcome: '', property_type: '', notes: '' })
     setPhotos([])
     setPhotoPreviewURLs([])
     setGpsCoords(null)
@@ -458,16 +468,19 @@ export default function FieldVisitForm() {
               </Select>
             </div>
 
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Your Initials</p>
-              <Input
-                value={form.initials}
-                onChange={(e) => setForm({ ...form, initials: e.target.value })}
-                placeholder="e.g. MN"
-                maxLength={5}
-                className="h-12 text-base uppercase"
-              />
-            </div>
+            <Card>
+              <CardContent className="p-4 flex items-center gap-3">
+                <UserCircle className="size-8 text-[#1A56A0] shrink-0" />
+                <div className="min-w-0">
+                  {currentUser?.displayName && (
+                    <div className="text-base font-semibold text-slate-800 uppercase tracking-wide">
+                      {currentUser.displayName}
+                    </div>
+                  )}
+                  <div className="text-sm text-muted-foreground truncate">{currentUser?.email}</div>
+                </div>
+              </CardContent>
+            </Card>
 
             <div>
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Notes</p>

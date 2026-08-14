@@ -17,4 +17,5 @@ class Visit(Base):
     photo_urls = Column(JSONB)
     gps_coordinates = Column(JSONB)
     work_order_id = Column(String)
+    created_by_uid = Column(String(128))
     created_at = Column(DateTime(timezone=True), server_default=func.now())

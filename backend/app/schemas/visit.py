@@ -22,3 +22,5 @@ class VisitResponse(VisitBase):
     id: int
     visited_at: Optional[datetime] = None
     created_at: Optional[datetime] = None
+    created_by_uid: Optional[str] = None
+    created_by_email: Optional[str] = None

@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.6 ✅, wrap-up next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.7 ✅, wrap-up next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -37,7 +37,7 @@ Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 | `visits` | 168 | `D2D_Jan2026.csv` | ✅ Imported |
 | `outreach_log` | 9,485 | `Outreach_Log.csv` (wide→long converted) | ✅ Imported |
 | `customer_submissions` | 0 | Phase 2 — customer portal | ✅ Schema ready |
-| `users` | 1 | Phase 2 — Firebase Auth | ✅ Admin account created |
+| `users` | 1+ | Phase 2 — Firebase Auth | ✅ Admin + field crew accounts |
 | `audit_log` | 0 | Auto-populated by triggers (later) | ✅ Schema ready |
 
 ### Indexes
@@ -101,7 +101,7 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | File | Endpoints | Auth | Status |
 |---|---|---|---|
 | `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth; PATCH: office_staff+ | ✅ Complete |
-| `visits.py` | `GET /`, `GET /{id}`, `POST /` | all: any auth | ✅ Complete |
+| `visits.py` | `GET /`, `GET /{id}`, `POST /` | all: any auth; POST sets `initials`+`created_by_uid` from user profile | ✅ Updated Phase 2.7 |
 | `outreach.py` | `GET /`, `GET /{id}`, `POST /` | GET: any auth; POST: office_staff+ | ✅ Complete |
 | `submissions.py` | `GET /property-search`, `POST /`, `GET /counts`, `GET /`, `GET /{id}`, `PATCH /{id}/review` | Portal: API key; Internal: office_staff+ | ✅ Updated Phase 2.6 |
 
@@ -448,8 +448,50 @@ A staff user can today, from the web dashboard:
 8. **Navbar shows pending submission count** — amber badge on the Submissions nav item
 
 Role enforcement is active:
-- `field_crew` — can read everything, POST visits
+- `field_crew` — can read everything, POST visits (attribution from their account profile)
 - `office_staff` / `supervisor` / `admin` — all of the above + PATCH properties + POST outreach + review submissions
+
+Visit attribution (Phase 2.7):
+- Field crew log in with their account; `/field` requires authentication
+- `initials` and `created_by_uid` on visits come from the authenticated user's profile — never from client input
+- Historical visits have no `created_by_uid`; the submitting email returns null for those
+
+### Phase 2.7 — Field Crew Authentication & Visit Attribution
+
+**Backend changes:**
+
+| File | Change | Status |
+|---|---|---|
+| `app/models/user.py` | Added `initials = Column(String(5))` | ✅ Updated |
+| `app/models/visit.py` | Added `created_by_uid = Column(String(128))` | ✅ Updated |
+| `app/schemas/visit.py` | Added `created_by_uid` and `created_by_email` to `VisitResponse` | ✅ Updated |
+| `app/api/visits.py` | POST now captures authenticated user — sets `initials` and `created_by_uid` from profile, ignores client values; GET endpoints join user email | ✅ Updated |
+
+**Frontend changes:**
+
+| File | Change | Status |
+|---|---|---|
+| `src/App.jsx` | `/field` route wrapped in `<RequireAuth>` | ✅ Updated |
+| `src/pages/FieldApp/FieldVisitForm.jsx` | Removed initials text input; added read-only user identity card (initials + email from Firebase auth) | ✅ Updated |
+| `src/pages/Dashboard/PropertyDetail.jsx` | Visits table shows submitting email beneath initials for attributed visits; title tooltip on hover | ✅ Updated |
+
+**New files:**
+
+| File | Purpose | Status |
+|---|---|---|
+| `docs/ADDING_USERS.md` | Procedure for provisioning field crew accounts (Firebase Console + pgAdmin) | ✅ New |
+
+**DB migration required — run in pgAdmin:**
+```sql
+ALTER TABLE users ADD COLUMN initials VARCHAR(5);
+ALTER TABLE visits ADD COLUMN created_by_uid VARCHAR(128);
+```
+
+**Key decisions:**
+- Visit attribution is account-based: `initials` and `created_by_uid` are set server-side from the authenticated user's profile — never from client input
+- Historical visits (168 imported rows) have no `created_by_uid` and return `null` for `created_by_email`
+- Firebase web SDK v9+ defaults to `browserLocalPersistence` (IndexedDB) — sessions survive browser restarts and device sleep
+- Field crew use the existing login page; no separate auth flow
 
 ---
 
@@ -460,6 +502,7 @@ Role enforcement is active:
 - ✅ **Field-optimized form.** Phase 2.4 complete. `/field` route, 2-step form, GPS capture, camera, offline-aware. Run `ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;` in pgAdmin.
 - ✅ **Customer portal.** Phase 2.5 complete. `/submit` public 3-step form; portal API key auth; submissions stored in `customer_submissions`.
 - ✅ **Customer submission review queue.** Phase 2.6 complete. Approve/reject workflow with material classification, property updates, and audit logging.
+- ✅ **Field crew authentication.** Phase 2.7 complete. `/field` requires login; visit attribution from authenticated account; `docs/ADDING_USERS.md` for provisioning.
 - 🔲 **No audit log triggers.** The `audit_log` table exists and is written to by submission reviews, but no PostgreSQL triggers for automatic change tracking yet.
 - 🔲 **No Springbrook sync, no Brightly auto-WO, no ArcGIS export endpoint.** All Phase 3.
 - 🔲 **No Metabase.** Phase 3.
@@ -472,4 +515,4 @@ Role enforcement is active:
 
 - ✅ Git initialized at `C:\lslp\`. Branch: `main`.
 - `.gitignore` covers `venv/`, `node_modules/`, `.env`, `.env.local`, `uploads/`, `__pycache__/`.
-- All work through Phase 2.6 + UI redesign committed to `main`.
+- All work through Phase 2.7 + UI redesign committed to `main`.

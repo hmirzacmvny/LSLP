@@ -190,8 +190,16 @@ export default function PropertyDetail() {
                         <TableCell className="tabular-nums">
                           {v.visited_at ? new Date(v.visited_at).toLocaleDateString() : '—'}
                         </TableCell>
-                        <TableCell className="font-mono font-semibold text-[#1A56A0]">
-                          {v.initials || '—'}
+                        <TableCell
+                          className="font-mono font-semibold text-[#1A56A0]"
+                          title={v.created_by_email || undefined}
+                        >
+                          <span>{v.initials || '—'}</span>
+                          {v.created_by_email && (
+                            <div className="text-[10px] font-sans font-normal text-muted-foreground truncate max-w-[140px]">
+                              {v.created_by_email}
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className={`text-xs ${
