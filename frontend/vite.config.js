@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
+import path from 'path'
 
 export default defineConfig({
   plugins: [
@@ -31,9 +32,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        // Precache the app shell (JS/CSS/HTML built by Vite)
         globPatterns: ['**/*.{js,css,html,ico,png,svg}'],
-        // API responses: network-first, fall back to cache
         runtimeCaching: [
           {
             urlPattern: ({ url }) => url.pathname.startsWith('/api/'),
@@ -43,7 +42,7 @@ export default defineConfig({
               networkTimeoutSeconds: 10,
               expiration: {
                 maxEntries: 200,
-                maxAgeSeconds: 60 * 60 * 24, // 24 hours
+                maxAgeSeconds: 60 * 60 * 24,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -54,4 +53,9 @@ export default defineConfig({
       },
     }),
   ],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
 })

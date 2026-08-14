@@ -140,13 +140,15 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 ## Frontend — `C:\lslp\frontend\`
 
 ### Stack
-React 18 + Vite + Tailwind v4 (via `@tailwindcss/postcss`) + React Router DOM + Axios + Firebase JS SDK.
+React 18 + Vite + Tailwind v4 (via `@tailwindcss/postcss`) + React Router DOM + Axios + Firebase JS SDK + shadcn/ui (Radix UI + Luma preset).
 
 ### Installed packages
 ```
 axios, react-router-dom, @tanstack/react-query,
 tailwindcss, @tailwindcss/postcss, autoprefixer, postcss,
-firebase, vite-plugin-pwa, dexie
+firebase, vite-plugin-pwa, dexie,
+radix-ui, class-variance-authority, clsx, tailwind-merge,
+lucide-react, @fontsource-variable/inter, tw-animate-css
 ```
 
 ### Top-level
@@ -164,25 +166,28 @@ firebase, vite-plugin-pwa, dexie
 |---|---|---|
 | `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor | ✅ Updated Phase 2.1 |
 | `firebase.js` | Firebase app init from `VITE_*` env vars, exports `auth` | ✅ New Phase 2.1 |
+| `design.js` | Design tokens: `statusColors`, `materialColors`, `appColors` | ✅ New (UI redesign) |
+| `utils.js` | shadcn `cn()` helper (clsx + tailwind-merge) | ✅ New (shadcn init) |
 
 ### `src/components/`
 | File | Purpose | Status |
 |---|---|---|
-| `Navbar.jsx` | Top nav + real-time sync indicator (event-driven: orange pending, green success 3 s, red fail + Retry button) | ✅ Updated Phase 2.3 |
+| `Navbar.jsx` | Top nav bar (#1A56A0 bg, MV seal, user dropdown, mobile hamburger via Sheet), sync indicator badges | ✅ Redesigned (shadcn) |
 | `RequireAuth.jsx` | Auth gate — loading state during Firebase init, redirect to `/login` if unauthed | ✅ New Phase 2.1 |
+| `ui/*.jsx` | 17 shadcn/ui components: button, input, label, select, textarea, card, badge, table, tabs, separator, avatar, dropdown-menu, alert, skeleton, dialog, sheet, sonner | ✅ Installed |
 
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
 |---|---|---|
-| `PropertiesList.jsx` | Search by address or account number, table of results | ✅ Complete |
-| `PropertyDetail.jsx` | Property header, service-line cards, Visits tab, Outreach tab | ✅ Complete |
-| `NewVisit.jsx` | Form to log a field visit with optional photo upload | ✅ Complete |
-| `NewOutreach.jsx` | Form to log an outreach attempt | ✅ Complete |
+| `PropertiesList.jsx` | Search with shadcn Input/Table/Badge/Skeleton, design tokens for status/material colors | ✅ Redesigned (shadcn) |
+| `PropertyDetail.jsx` | Card with blue accent border, 2x2 material grid with color-coded borders, shadcn Tabs/Table/Badge/Skeleton | ✅ Redesigned (shadcn) |
+| `NewVisit.jsx` | shadcn Card form, tap-button selectors for Access/Outcome, dashed photo upload area, validation + offline | ✅ Redesigned (shadcn) |
+| `NewOutreach.jsx` | shadcn Card form, customer-initiated section in nested Card, character counters, validation | ✅ Redesigned (shadcn) |
 
 ### `src/pages/`
 | File | Purpose | Status |
 |---|---|---|
-| `Login.jsx` | Email/password sign-in form, redirects to intended page on success | ✅ New Phase 2.1 |
+| `Login.jsx` | Dark blue gradient bg, centered Card with MV seal, shadcn Input/Label/Button/Alert | ✅ Redesigned (shadcn) |
 
 ### Phase 2.2 — PWA Setup
 
@@ -308,6 +313,35 @@ Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_
 
 **Configuration required:** Add `PORTAL_API_KEY=lslp-portal-2026` to `backend/.env`
 
+### UI Redesign — shadcn/ui + Mount Vernon Seal
+
+**Design system:** `src/lib/design.js` — shared color tokens for status badges and material indicators.
+
+**shadcn/ui setup:**
+- Preset: Radix UI + Luma
+- Icon library: lucide-react
+- Font: Inter Variable (`@fontsource-variable/inter`)
+- Base color: neutral, CSS variables enabled
+- 17 components installed in `src/components/ui/`
+
+**All 8 pages redesigned:**
+
+1. **Navbar** — `#1A56A0` bg, MV seal (h-10 rounded), "LSLP Platform" + "City of Mount Vernon", ghost nav buttons with active highlight (`bg-white/20`), user avatar dropdown (email + Sign Out), mobile hamburger with Sheet drawer, sync badges restyled
+2. **Login** — gradient bg (`#1A56A0` to `#1e3a5f`), centered Card (max-w 400px), seal (h-20), Separator, shadcn Input/Label/Button, Alert for errors
+3. **PropertiesList** — search Input with Search icon, shadcn Table with Badge (statusColors) and material colors, Skeleton loading rows, empty state with Search icon
+4. **PropertyDetail** — breadcrumb, header Card with `border-l-4 border-l-blue-700`, 2x2 material grid (color-coded left borders), shadcn Tabs with Table for visits/outreach, Badge for access granted and attempt numbers
+5. **NewVisit** — Card form, tap-button selectors (Access: blue when selected; Outcome: Lead=red, Copper=green, Galvanized=orange), dashed photo upload area with Camera icon, thumbnails, character counter
+6. **NewOutreach** — Card form, customer-initiated nested Card with slide-in, character counters on both textareas, shadcn components throughout
+7. **FieldVisitForm** — minimal header (seal h-8 + "Field Visit"), Card for property search, GPS status Card with MapPin icon, full-width stacked access buttons (green/red/blue), 2-col outcome grid, Camera card, sticky submit button at bottom
+8. **SubmitForm** — seal header (h-16), progress bar (filled circles + connecting lines), Card form, Search icon input, confirmation card, tap buttons for prior line work, photo upload with X remove buttons, success screen with Badge reference number
+
+**Global design tokens applied:**
+- Page bg: `bg-slate-50`
+- Titles: `text-2xl font-bold text-slate-800`
+- Body: `text-slate-600` / `text-muted-foreground`
+- Primary color: `#1A56A0` via inline style (not overriding shadcn CSS vars)
+- All emojis replaced with lucide-react icons (CheckCircle, WifiOff, Search, Camera, MapPin, etc.)
+
 ---
 
 ## External Services Configured
@@ -357,4 +391,4 @@ Role enforcement is active:
 
 - ✅ Git initialized at `C:\lslp\`. Branch: `main`.
 - `.gitignore` covers `venv/`, `node_modules/`, `.env`, `.env.local`, `uploads/`, `__pycache__/`.
-- All work through Phase 2.3 (including bug fixes) committed to `main`.
+- All work through Phase 2.5 + UI redesign committed to `main`.

@@ -2,6 +2,13 @@ import { useState } from 'react'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AlertCircle } from 'lucide-react'
 
 export default function Login() {
   const [email, setEmail] = useState('')
@@ -28,48 +35,71 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-gray-900 mb-1">LSLP</h1>
-        <p className="text-sm text-gray-500 mb-6">Lead Service Line Inventory Platform</p>
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div
+      className="min-h-screen flex items-center justify-center p-6"
+      style={{ background: 'linear-gradient(135deg, #1A56A0 0%, #1e3a5f 100%)' }}
+    >
+      <Card className="w-full max-w-[400px] shadow-2xl">
+        <CardContent className="pt-8 pb-8 px-8 space-y-6">
+          {/* Seal + Titles */}
+          <div className="text-center space-y-2">
+            <img
+              src="/seal.png"
+              alt="City of Mount Vernon"
+              className="h-20 w-20 object-contain mx-auto"
             />
+            <p className="text-sm text-slate-500">City of Mount Vernon</p>
+            <h1 className="text-2xl font-bold text-slate-800">LSLP Platform</h1>
+            <p className="text-sm text-muted-foreground">Lead Service Line Inventory System</p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+          <Separator />
 
-          {error && (
-            <p className="text-sm text-red-600">{error}</p>
-          )}
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                autoFocus
+                placeholder="you@mountvernonny.gov"
+              />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white rounded-lg px-4 py-2 text-sm font-medium hover:bg-blue-700 disabled:opacity-50"
-          >
-            {loading ? 'Signing in...' : 'Sign in'}
-          </button>
-        </form>
-      </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <Input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                placeholder="Enter your password"
+              />
+            </div>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="w-full"
+              style={{ backgroundColor: '#1A56A0' }}
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   )
 }

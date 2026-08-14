@@ -2,24 +2,39 @@ import { useState, useEffect, useRef } from 'react'
 import { getProperties, createVisit } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Search, MapPin, Camera, CheckCircle, WifiOff, ArrowLeft, AlertCircle, X,
+} from 'lucide-react'
 
-const ACCESS_OPTIONS = ['Yes', 'No', 'No Answer', 'Refused', 'Scheduled']
-const OUTCOME_OPTIONS = ['Lead', 'Copper', 'Galvanized', 'Unknown', 'Inaccessible']
+const ACCESS_OPTIONS = [
+  { value: 'Yes', selected: 'bg-green-600 text-white hover:bg-green-700' },
+  { value: 'No', selected: 'bg-red-600 text-white hover:bg-red-700' },
+  { value: 'No Answer', selected: 'bg-[#1A56A0] text-white hover:bg-[#1A56A0]/90' },
+  { value: 'Refused', selected: 'bg-[#1A56A0] text-white hover:bg-[#1A56A0]/90' },
+  { value: 'Scheduled', selected: 'bg-[#1A56A0] text-white hover:bg-[#1A56A0]/90' },
+]
+
+const OUTCOME_OPTIONS = [
+  { value: 'Lead', selected: 'bg-red-600 text-white hover:bg-red-700' },
+  { value: 'Copper', selected: 'bg-green-600 text-white hover:bg-green-700' },
+  { value: 'Galvanized', selected: 'bg-orange-500 text-white hover:bg-orange-600' },
+  { value: 'Unknown', selected: 'bg-slate-600 text-white hover:bg-slate-700' },
+  { value: 'Inaccessible', selected: 'bg-slate-600 text-white hover:bg-slate-700' },
+]
+
 const PROPERTY_TYPES = [
   'One Family', 'Two Family', 'Three Family',
   'Commercial or Industrial', 'Multi Family',
 ]
 
-const OUTCOME_COLORS = {
-  Lead: 'bg-red-600 text-white',
-  Copper: 'bg-green-600 text-white',
-  Galvanized: 'bg-orange-500 text-white',
-  Unknown: 'bg-blue-700 text-white',
-  Inaccessible: 'bg-blue-700 text-white',
-}
-
 export default function FieldVisitForm() {
-  // ── Step 1 ────────────────────────────────────────────
+  // Step 1
   const [step, setStep] = useState(1)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState([])
@@ -27,7 +42,7 @@ export default function FieldVisitForm() {
   const [showDropdown, setShowDropdown] = useState(false)
   const [selectedProperty, setSelectedProperty] = useState(null)
 
-  // ── Step 2 ────────────────────────────────────────────
+  // Step 2
   const [form, setForm] = useState({
     access_granted: '',
     verification_outcome: '',
@@ -38,9 +53,9 @@ export default function FieldVisitForm() {
   const [photos, setPhotos] = useState([])
   const [photoPreviewURLs, setPhotoPreviewURLs] = useState([])
   const [gpsCoords, setGpsCoords] = useState(null)
-  const [gpsStatus, setGpsStatus] = useState('capturing') // capturing | captured | unavailable
+  const [gpsStatus, setGpsStatus] = useState('capturing')
 
-  // ── Submit ────────────────────────────────────────────
+  // Submit
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [submitted, setSubmitted] = useState(false)
@@ -49,7 +64,7 @@ export default function FieldVisitForm() {
   const debounceRef = useRef(null)
   const photoInputRef = useRef(null)
 
-  // ── Search (debounced, fires at 3+ chars) ─────────────
+  // Search
   const handleSearchChange = (e) => {
     const q = e.target.value
     setSearchQuery(q)
@@ -85,7 +100,7 @@ export default function FieldVisitForm() {
     setSearchResults([])
   }
 
-  // ── GPS (fires when step 2 mounts) ───────────────────
+  // GPS
   useEffect(() => {
     if (step !== 2) return
     if (!navigator.geolocation) {
@@ -102,13 +117,13 @@ export default function FieldVisitForm() {
     )
   }, [step])
 
-  // ── Photos ────────────────────────────────────────────
+  // Photos
   const handlePhotoChange = (e) => {
     const incoming = Array.from(e.target.files)
     const merged = [...photos, ...incoming].slice(0, 3)
     setPhotos(merged)
     setPhotoPreviewURLs(merged.map((f) => URL.createObjectURL(f)))
-    e.target.value = '' // allow re-selecting the same file
+    e.target.value = ''
   }
 
   const removePhoto = (idx) => {
@@ -117,7 +132,7 @@ export default function FieldVisitForm() {
     setPhotoPreviewURLs(updated.map((f) => URL.createObjectURL(f)))
   }
 
-  // ── Reset back to step 1 ──────────────────────────────
+  // Reset
   const resetForm = () => {
     setStep(1)
     setSearchQuery('')
@@ -134,7 +149,7 @@ export default function FieldVisitForm() {
     setOfflineSaved(false)
   }
 
-  // ── Submit ────────────────────────────────────────────
+  // Submit
   const handleSubmit = async () => {
     const accountNumber = selectedProperty?.account_number || searchQuery.trim()
     if (!accountNumber) {
@@ -152,7 +167,6 @@ export default function FieldVisitForm() {
       ...(gpsString ? { gps_coordinates: gpsString } : {}),
     }
 
-    // Offline path
     if (!navigator.onLine) {
       try {
         await db.pendingVisits.add({
@@ -173,7 +187,6 @@ export default function FieldVisitForm() {
       return
     }
 
-    // Online path
     try {
       const fd = new FormData()
       Object.entries(formPayload).forEach(([key, val]) => {
@@ -195,284 +208,295 @@ export default function FieldVisitForm() {
     }
   }
 
-  // ── Success screens ───────────────────────────────────
-  if (submitted) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center p-10">
-        <div className="text-8xl mb-6">✅</div>
-        <div className="text-3xl font-bold text-green-700">Visit Logged</div>
-        <div className="text-gray-500 mt-2">Ready for next property...</div>
-      </div>
-    </div>
-  )
-
-  if (offlineSaved) return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-50">
-      <div className="text-center p-10">
-        <div className="text-8xl mb-6">📴</div>
-        <div className="text-3xl font-bold text-orange-600">Saved Locally</div>
-        <div className="text-gray-500 mt-2 max-w-xs mx-auto">
-          You are offline. This visit will sync automatically when you reconnect.
+  // Success screens
+  if (submitted)
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center p-10">
+          <CheckCircle className="size-20 text-green-600 mx-auto mb-4" />
+          <div className="text-3xl font-bold text-green-700">Visit Logged</div>
+          <div className="text-muted-foreground mt-2">Ready for next property...</div>
         </div>
       </div>
-    </div>
-  )
+    )
 
-  // ── Step 1 — Property Search ──────────────────────────
-  if (step === 1) return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-blue-900 text-white px-6 py-5">
-        <div className="text-xs font-semibold text-blue-300 uppercase tracking-wide mb-1">Field App</div>
-        <div className="text-2xl font-bold">Find Property</div>
+  if (offlineSaved)
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50">
+        <div className="text-center p-10">
+          <WifiOff className="size-20 text-orange-500 mx-auto mb-4" />
+          <div className="text-3xl font-bold text-orange-600">Saved Locally</div>
+          <div className="text-muted-foreground mt-2 max-w-xs mx-auto">
+            You are offline. This visit will sync automatically when you reconnect.
+          </div>
+        </div>
       </div>
+    )
 
-      <div className="p-5 max-w-xl mx-auto">
-        <div className="relative mt-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={handleSearchChange}
-            placeholder="Search address or account number..."
-            autoFocus
-            className="w-full border-2 border-gray-300 rounded-xl px-5 py-4 text-lg focus:outline-none focus:border-blue-500"
-          />
-          {searchLoading && (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
-              Searching...
-            </div>
-          )}
+  // Step 1 — Property Search
+  if (step === 1)
+    return (
+      <div className="min-h-screen bg-slate-50">
+        {/* Header */}
+        <div className="flex items-center gap-3 px-5 py-4" style={{ backgroundColor: '#1A56A0' }}>
+          <img src="/seal.png" alt="City of Mount Vernon" className="h-8 w-8 object-contain rounded-full bg-white p-0.5" />
+          <span className="text-white font-bold">Field Visit</span>
+        </div>
 
-          {showDropdown && (
-            <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden">
-              {searchResults.map((prop) => (
-                <button
-                  key={prop.account_number}
-                  onClick={() => handleSelectProperty(prop)}
-                  className="w-full text-left px-5 py-4 hover:bg-blue-50 border-b border-gray-100 last:border-0"
+        <div className="p-5 max-w-xl mx-auto">
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold text-slate-700 mb-4">Find a property</h2>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  placeholder="Search address or account number..."
+                  autoFocus
+                  className="pl-10 h-12 text-base"
+                />
+                {searchLoading && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    Searching...
+                  </div>
+                )}
+
+                {showDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-xl shadow-lg overflow-hidden">
+                    {searchResults.map((prop) => (
+                      <button
+                        key={prop.account_number}
+                        onClick={() => handleSelectProperty(prop)}
+                        className="w-full text-left px-5 py-4 hover:bg-slate-50 border-b last:border-0"
+                      >
+                        <div className="font-semibold text-slate-800">{prop.address}</div>
+                        <div className="text-sm text-muted-foreground font-mono">{prop.account_number}</div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirmation card */}
+              {selectedProperty && (
+                <div className="mt-5 p-4 border-2 border-blue-200 rounded-xl">
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Selected Property</p>
+                  <p className="text-xl font-bold text-slate-800 mb-1">{selectedProperty.address}</p>
+                  <p className="text-sm font-mono text-muted-foreground mb-3">{selectedProperty.account_number}</p>
+                  <div className="flex gap-4 text-sm flex-wrap">
+                    <span className="text-muted-foreground">House side: <strong>{selectedProperty.hs_service || '\u2014'}</strong></span>
+                    <span className="text-muted-foreground">Street side: <strong>{selectedProperty.ss_service || '\u2014'}</strong></span>
+                  </div>
+                  {selectedProperty.verified_status && (
+                    <Badge className="mt-3 bg-blue-100 text-blue-800">{selectedProperty.verified_status}</Badge>
+                  )}
+                </div>
+              )}
+
+              {(selectedProperty || searchQuery.trim().length >= 6) && (
+                <Button
+                  onClick={() => setStep(2)}
+                  className="mt-5 w-full h-14 text-lg font-bold"
+                  style={{ backgroundColor: '#1A56A0' }}
                 >
-                  <div className="font-semibold text-gray-800">{prop.address}</div>
-                  <div className="text-sm text-gray-500 font-mono">{prop.account_number}</div>
-                </button>
-              ))}
-            </div>
-          )}
+                  Looks right — Continue
+                </Button>
+              )}
+
+              {!selectedProperty && searchQuery.length < 3 && (
+                <div className="mt-12 text-center text-muted-foreground">
+                  <Search className="size-12 mx-auto mb-3 stroke-1" />
+                  <div>Type at least 3 characters to search</div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-
-        {/* Property confirmation card */}
-        {selectedProperty && (
-          <div className="mt-5 bg-white rounded-xl border-2 border-blue-200 p-5 shadow-sm">
-            <div className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-2">Selected Property</div>
-            <div className="text-xl font-bold text-gray-800 mb-1">{selectedProperty.address}</div>
-            <div className="text-sm font-mono text-gray-500 mb-3">{selectedProperty.account_number}</div>
-            <div className="flex gap-4 text-sm flex-wrap">
-              <div>
-                <span className="text-gray-500">House side: </span>
-                <span className="font-semibold">{selectedProperty.hs_service || '—'}</span>
-              </div>
-              <div>
-                <span className="text-gray-500">Street side: </span>
-                <span className="font-semibold">{selectedProperty.ss_service || '—'}</span>
-              </div>
-            </div>
-            {selectedProperty.verified_status && (
-              <div className="mt-3 inline-block bg-blue-100 text-blue-800 text-xs font-semibold px-3 py-1 rounded-full">
-                {selectedProperty.verified_status}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Continue button — show if property selected or account number typed directly (≥6 chars) */}
-        {(selectedProperty || searchQuery.trim().length >= 6) && (
-          <button
-            onClick={() => setStep(2)}
-            className="mt-5 w-full bg-blue-700 text-white py-5 rounded-xl text-xl font-bold hover:bg-blue-800 active:bg-blue-900 transition-colors"
-          >
-            Looks right — Continue →
-          </button>
-        )}
-
-        {!selectedProperty && searchQuery.length < 3 && (
-          <div className="mt-12 text-center text-gray-400">
-            <div className="text-5xl mb-3">🔍</div>
-            <div>Type at least 3 characters to search</div>
-          </div>
-        )}
       </div>
-    </div>
-  )
+    )
 
-  // ── Step 2 — Log Visit ────────────────────────────────
+  // Step 2 — Log Visit
   const addressDisplay = selectedProperty?.address || searchQuery.trim()
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-10">
-      {/* Header — tap to go back to Step 1 */}
+    <div className="min-h-screen bg-slate-50 pb-24">
+      {/* Header — tap to go back */}
       <button
         onClick={() => setStep(1)}
-        className="w-full bg-blue-900 text-white px-6 py-5 text-left hover:bg-blue-800 transition-colors"
+        className="w-full flex items-center gap-3 px-5 py-4 text-left text-white transition-colors hover:bg-[#174d8f]"
+        style={{ backgroundColor: '#1A56A0' }}
       >
-        <div className="text-xs font-semibold text-blue-300 uppercase tracking-wide mb-1">← Tap to change property</div>
-        <div className="text-xl font-bold truncate">{addressDisplay}</div>
-        {selectedProperty && (
-          <div className="text-sm font-mono text-blue-300">{selectedProperty.account_number}</div>
-        )}
+        <ArrowLeft className="size-4 shrink-0" />
+        <div className="min-w-0">
+          <div className="text-xs font-semibold text-blue-200 uppercase tracking-wide">Tap to change property</div>
+          <div className="text-lg font-bold truncate">{addressDisplay}</div>
+          {selectedProperty && (
+            <div className="text-sm font-mono text-blue-200">{selectedProperty.account_number}</div>
+          )}
+        </div>
       </button>
 
-      {/* GPS status */}
-      <div className="px-5 pt-3">
-        {gpsStatus === 'captured' && <div className="text-sm text-green-600 font-medium">📍 Location captured</div>}
-        {gpsStatus === 'unavailable' && <div className="text-sm text-gray-400">📍 Location unavailable</div>}
-        {gpsStatus === 'capturing' && <div className="text-sm text-gray-400">📍 Capturing location...</div>}
-      </div>
+      <div className="px-5 pt-4 max-w-xl mx-auto space-y-5">
 
-      <div className="px-5 pt-4 max-w-xl mx-auto space-y-6">
+        {/* GPS status */}
+        <Card>
+          <CardContent className="p-4 flex items-center gap-3">
+            <MapPin className={`size-5 ${gpsStatus === 'captured' ? 'text-green-600' : 'text-muted-foreground'}`} />
+            <span className={`text-sm font-medium ${gpsStatus === 'captured' ? 'text-green-600' : 'text-muted-foreground'}`}>
+              {gpsStatus === 'captured' && 'Location captured'}
+              {gpsStatus === 'unavailable' && 'Location unavailable'}
+              {gpsStatus === 'capturing' && 'Capturing location...'}
+            </span>
+          </CardContent>
+        </Card>
 
         {/* Access Granted */}
         <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Access Granted</div>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Access Granted</p>
+          <div className="space-y-2">
             {ACCESS_OPTIONS.map((opt) => (
-              <button
-                key={opt}
+              <Button
+                key={opt.value}
                 type="button"
-                onClick={() => setForm({ ...form, access_granted: opt })}
-                className={`min-h-[52px] rounded-xl font-semibold text-sm transition-all ${
-                  form.access_granted === opt
-                    ? 'bg-blue-700 text-white shadow-md scale-[0.98]'
-                    : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
+                variant={form.access_granted === opt.value ? 'default' : 'outline'}
+                onClick={() => setForm({ ...form, access_granted: opt.value })}
+                className={`w-full min-h-[52px] text-sm font-semibold ${
+                  form.access_granted === opt.value ? opt.selected : ''
                 }`}
               >
-                {opt}
-              </button>
+                {opt.value}
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Verification Outcome */}
         <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Verification Outcome</div>
-          <div className="grid grid-cols-3 gap-2">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">Verification Outcome</p>
+          <div className="grid grid-cols-2 gap-2">
             {OUTCOME_OPTIONS.map((opt) => (
-              <button
-                key={opt}
+              <Button
+                key={opt.value}
                 type="button"
-                onClick={() => setForm({ ...form, verification_outcome: opt })}
-                className={`min-h-[52px] rounded-xl font-semibold text-sm transition-all ${
-                  form.verification_outcome === opt
-                    ? OUTCOME_COLORS[opt] + ' shadow-md scale-[0.98]'
-                    : 'bg-white border-2 border-gray-200 text-gray-700 hover:border-blue-300'
+                variant={form.verification_outcome === opt.value ? 'default' : 'outline'}
+                onClick={() => setForm({ ...form, verification_outcome: opt.value })}
+                className={`min-h-[52px] text-sm font-semibold ${
+                  form.verification_outcome === opt.value ? opt.selected : ''
                 }`}
               >
-                {opt}
-              </button>
+                {opt.value}
+              </Button>
             ))}
           </div>
         </div>
 
         {/* Property Type */}
         <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Property Type</div>
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Property Type</p>
           <select
             value={form.property_type}
             onChange={(e) => setForm({ ...form, property_type: e.target.value })}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base bg-white focus:outline-none focus:border-blue-500"
+            className="flex h-12 w-full rounded-3xl border border-transparent bg-input/50 px-3 py-1 text-base transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
           >
-            <option value="">— Select —</option>
+            <option value="">-- Select --</option>
             {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
           </select>
         </div>
 
         {/* Initials */}
         <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Your Initials</div>
-          <input
-            type="text"
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Your Initials</p>
+          <Input
             value={form.initials}
             onChange={(e) => setForm({ ...form, initials: e.target.value })}
             placeholder="e.g. MN"
             maxLength={5}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-blue-500"
+            className="h-12 text-base uppercase"
           />
         </div>
 
         {/* Notes */}
         <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Notes</div>
-          <textarea
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Notes</p>
+          <Textarea
             value={form.notes}
             onChange={(e) => setForm({ ...form, notes: e.target.value })}
             placeholder="Any additional observations..."
             rows={3}
-            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-base focus:outline-none focus:border-blue-500 resize-none"
+            className="text-base"
           />
         </div>
 
         {/* Photos */}
-        <div>
-          <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">
-            Photos {photos.length > 0 && `(${photos.length}/3)`}
-          </div>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              Photos {photos.length > 0 && `(${photos.length}/3)`}
+            </p>
 
-          {photoPreviewURLs.length > 0 && (
-            <div className="flex gap-3 mb-3 flex-wrap">
-              {photoPreviewURLs.map((url, idx) => (
-                <div key={idx} className="relative">
-                  <img
-                    src={url}
-                    alt={`Photo ${idx + 1}`}
-                    className="w-24 h-24 object-cover rounded-xl border-2 border-gray-200"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePhoto(idx)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs font-bold shadow"
-                  >
-                    ✕
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+            {photoPreviewURLs.length > 0 && (
+              <div className="flex gap-3 mb-3 flex-wrap">
+                {photoPreviewURLs.map((url, idx) => (
+                  <div key={idx} className="relative">
+                    <img src={url} alt={`Photo ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border" />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(idx)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
 
-          {photos.length < 3 && (
-            <>
-              <input
-                ref={photoInputRef}
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handlePhotoChange}
-                className="hidden"
-              />
-              <button
-                type="button"
-                onClick={() => photoInputRef.current?.click()}
-                className="w-full min-h-[52px] border-2 border-dashed border-gray-300 rounded-xl text-gray-600 font-semibold hover:border-blue-400 hover:text-blue-600 transition-colors"
-              >
-                📷 Take Photo
-              </button>
-            </>
-          )}
-        </div>
+            {photos.length < 3 && (
+              <>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handlePhotoChange}
+                  className="hidden"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => photoInputRef.current?.click()}
+                  className="w-full min-h-[52px] border-dashed"
+                >
+                  <Camera className="size-5" />
+                  Take Photo
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Error */}
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl p-4 text-sm">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <AlertCircle className="size-4" />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
+      </div>
 
-        {/* Submit */}
-        <button
+      {/* Sticky submit */}
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg">
+        <Button
           type="button"
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full bg-blue-700 text-white py-5 rounded-xl text-xl font-bold hover:bg-blue-800 active:bg-blue-900 disabled:opacity-50 transition-colors"
+          className="w-full h-14 text-lg font-bold max-w-xl mx-auto block"
+          style={{ backgroundColor: '#1A56A0' }}
         >
-          {loading ? 'Saving...' : !navigator.onLine ? '📴 Save Offline' : 'Submit Visit'}
-        </button>
-
+          {loading ? 'Saving...' : !navigator.onLine ? 'Save Offline' : 'Submit Visit'}
+        </Button>
       </div>
     </div>
   )

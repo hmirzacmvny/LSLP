@@ -1,6 +1,37 @@
 import { useState } from 'react'
 import { getProperties } from '../../lib/api'
 import { useNavigate } from 'react-router-dom'
+import { statusColors, materialColors } from '../../lib/design'
+import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from '@/components/ui/table'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Search, AlertCircle } from 'lucide-react'
+
+function getMaterialClass(material) {
+  if (!material) return 'text-gray-400'
+  const key = Object.keys(materialColors).find((k) =>
+    material.toLowerCase().includes(k.toLowerCase())
+  )
+  return key ? materialColors[key] : 'text-slate-600'
+}
+
+function getStatusBadge(status) {
+  if (!status) return statusColors['Unknown']
+  const key = Object.keys(statusColors).find((k) =>
+    status.toLowerCase().includes(k.toLowerCase())
+  )
+  return key ? statusColors[key] : statusColors['Unknown']
+}
 
 export default function PropertiesList() {
   const [search, setSearch] = useState('')
@@ -31,106 +62,113 @@ export default function PropertiesList() {
     if (e.key === 'Enter') handleSearch()
   }
 
-  const getStatusColor = (status) => {
-    if (!status) return 'bg-gray-100 text-gray-600'
-    if (status.toLowerCase().includes('lead')) return 'bg-red-100 text-red-700'
-    if (status.toLowerCase().includes('copper')) return 'bg-green-100 text-green-700'
-    if (status.toLowerCase().includes('galvanized')) return 'bg-orange-100 text-orange-700'
-    return 'bg-blue-100 text-blue-700'
-  }
-
   return (
     <div className="p-6 max-w-6xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-blue-900">Properties</h1>
-        <p className="text-gray-500 mt-1">
-          Search by address or account number
-        </p>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-slate-800">Properties</h1>
+        <p className="text-slate-500 mt-1">Search the service area inventory</p>
       </div>
 
       {/* Search Bar */}
       <div className="flex gap-3 mb-6">
-        <input
-          type="text"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Enter address or account number..."
-          className="flex-1 border border-gray-300 rounded-lg px-4 py-3 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-        <button
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Enter address or account number..."
+            className="pl-10 h-11"
+          />
+        </div>
+        <Button
           onClick={handleSearch}
           disabled={loading}
-          className="bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-800 disabled:opacity-50"
+          style={{ backgroundColor: '#1A56A0' }}
+          className="h-11 px-6"
         >
           {loading ? 'Searching...' : 'Search'}
-        </button>
+        </Button>
       </div>
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg p-4 mb-6">
-          {error}
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="size-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Loading skeleton */}
+      {loading && (
+        <div className="space-y-3">
+          {[...Array(5)].map((_, i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
         </div>
       )}
 
       {/* Results */}
       {searched && !loading && (
         <>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-slate-500 mb-4">
             {results.length} {results.length === 1 ? 'property' : 'properties'} found
           </p>
 
           {results.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
+            <div className="text-center py-16 text-slate-400">
               No properties found for "{search}"
             </div>
           ) : (
             <div className="bg-white rounded-xl shadow overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-blue-800 text-white">
-                  <tr>
-                    <th className="text-left px-4 py-3">Account #</th>
-                    <th className="text-left px-4 py-3">Address</th>
-                    <th className="text-left px-4 py-3">House Side</th>
-                    <th className="text-left px-4 py-3">Street Side</th>
-                    <th className="text-left px-4 py-3">Status</th>
-                    <th className="text-left px-4 py-3">Account Type</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((prop, i) => (
-                    <tr
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Account #</TableHead>
+                    <TableHead>Address</TableHead>
+                    <TableHead>House Side</TableHead>
+                    <TableHead>Street Side</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Account Type</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {results.map((prop) => (
+                    <TableRow
                       key={prop.account_number}
                       onClick={() => navigate(`/properties/${prop.account_number}`)}
-                      className={`cursor-pointer hover:bg-blue-50 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}
+                      className="cursor-pointer hover:bg-slate-50"
                     >
-                      <td className="px-4 py-3 font-mono text-blue-700 font-semibold">
+                      <TableCell className="font-mono font-semibold" style={{ color: '#1A56A0' }}>
                         {prop.account_number}
-                      </td>
-                      <td className="px-4 py-3 text-gray-800">{prop.address}</td>
-                      <td className="px-4 py-3 text-gray-600">{prop.hs_service || '—'}</td>
-                      <td className="px-4 py-3 text-gray-600">{prop.ss_service || '—'}</td>
-                      <td className="px-4 py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(prop.verified_status)}`}>
+                      </TableCell>
+                      <TableCell className="text-slate-800">{prop.address}</TableCell>
+                      <TableCell className={getMaterialClass(prop.hs_service)}>
+                        {prop.hs_service || '\u2014'}
+                      </TableCell>
+                      <TableCell className={getMaterialClass(prop.ss_service)}>
+                        {prop.ss_service || '\u2014'}
+                      </TableCell>
+                      <TableCell>
+                        <Badge className={getStatusBadge(prop.verified_status)}>
                           {prop.verified_status || 'Pending'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-gray-600">{prop.ub_account_type || '—'}</td>
-                    </tr>
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-slate-600">{prop.ub_account_type || '\u2014'}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </>
       )}
 
       {/* Empty state before search */}
-      {!searched && (
-        <div className="text-center py-16 text-gray-400">
-          <div className="text-5xl mb-4">🔍</div>
+      {!searched && !loading && (
+        <div className="text-center py-16 text-slate-400">
+          <Search className="size-12 mx-auto mb-4 stroke-1" />
           <p className="text-lg">Search for a property to get started</p>
         </div>
       )}

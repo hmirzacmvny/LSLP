@@ -21,7 +21,7 @@ function App() {
         <Route
           path="/field"
           element={
-            <div className="min-h-screen bg-gray-50">
+            <div className="min-h-screen bg-slate-50">
               <Navbar />
               <FieldVisitForm />
             </div>
@@ -31,7 +31,7 @@ function App() {
           path="/*"
           element={
             <RequireAuth>
-              <div className="min-h-screen bg-gray-50">
+              <div className="min-h-screen bg-slate-50">
                 <Navbar />
                 <Routes>
                   <Route path="/" element={<PropertiesList />} />
