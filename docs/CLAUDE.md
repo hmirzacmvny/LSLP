@@ -267,6 +267,9 @@ The survey grid spacing (48px) was chosen because it references engineering grap
 - ✅ When the schema changes, update `PROGRESS.md` and `ROADMAP.md`
 - ✅ When adding a new protected endpoint, apply `Depends(verify_firebase_token)` for any-auth or `Depends(require_role([...]))` for role-restricted access
 
+**Git identity:**
+Git commits are authored under the repository owner's identity, which is configured globally on the machine. Never run `git config user.name` or `git config user.email`, and never pass `--author` to a commit — leave git identity alone entirely.
+
 ---
 
 ## 11. Running the Project
