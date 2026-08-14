@@ -4,7 +4,7 @@ import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 
 export default function RequireAuth({ children }) {
-  const [user, setUser] = useState(undefined) // undefined = still initializing
+  const [user, setUser] = useState(undefined)
   const location = useLocation()
 
   useEffect(() => {
@@ -15,9 +15,8 @@ export default function RequireAuth({ children }) {
   }, [])
 
   if (user === undefined) {
-    // Firebase still initializing — avoid flash-redirect
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100dvh - 68px)' }}>
         <p className="text-sm text-gray-400">Loading...</p>
       </div>
     )

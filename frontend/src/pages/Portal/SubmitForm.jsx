@@ -11,6 +11,7 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select'
 import { Search, Camera, CheckCircle, AlertCircle, X, Check } from 'lucide-react'
+import { PageReveal, RevealItem } from '../../components/PageReveal'
 
 const API_BASE = 'http://127.0.0.1:8000'
 const PORTAL_API_KEY = import.meta.env.VITE_PORTAL_API_KEY || 'lslp-portal-2026'
@@ -30,6 +31,12 @@ const stepVariants = {
   animate: { opacity: 1, x: 0 },
   exit: { opacity: 0, x: -30 },
 }
+
+const portalHeaderBg = `
+  repeating-linear-gradient(0deg, transparent, transparent 47px, rgba(255, 255, 255, 0.06) 47px, rgba(255, 255, 255, 0.06) 48px),
+  repeating-linear-gradient(90deg, transparent, transparent 47px, rgba(255, 255, 255, 0.06) 47px, rgba(255, 255, 255, 0.06) 48px),
+  linear-gradient(135deg, #1A56A0 0%, #2563EB 100%)
+`.trim()
 
 export default function SubmitForm() {
   const [step, setStep] = useState(1)
@@ -209,7 +216,7 @@ export default function SubmitForm() {
 
   if (step === 'success')
     return (
-      <div className="min-h-screen bg-[#FAFAF8] flex items-center justify-center p-6">
+      <div className="min-h-screen canvas-surface flex items-center justify-center p-6">
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -239,8 +246,13 @@ export default function SubmitForm() {
     )
 
   return (
-    <div className="min-h-screen bg-[#FAFAF8]">
-      <div className="text-white text-center py-8 px-6" style={{ background: 'linear-gradient(135deg, #1A56A0 0%, #2563EB 100%)' }}>
+    <motion.div
+      className="min-h-screen canvas-surface"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 35 }}
+    >
+      <div className="text-white text-center py-8 px-6" style={{ background: portalHeaderBg }}>
         <img
           src="/seal.png"
           alt="City of Mount Vernon"
@@ -250,327 +262,331 @@ export default function SubmitForm() {
         <p className="text-blue-100 text-sm">Service Line Information Submission</p>
       </div>
 
-      <Stepper />
+      <PageReveal>
+        <RevealItem>
+          <Stepper />
+        </RevealItem>
 
-      <div className="max-w-[560px] mx-auto px-5 pb-8">
-        <Card className="overflow-visible">
-          <CardContent className="p-6">
-            <AnimatePresence mode="wait">
-              {step === 1 && (
-                <motion.div
-                  key="step1"
-                  variants={stepVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={stepTransition}
-                >
-                  <h2 className="text-lg font-semibold text-slate-700 mb-1">Find Your Property</h2>
-                  <p className="text-sm text-muted-foreground mb-6">
-                    Use this form to provide information about the water service line at your property.
-                  </p>
-
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      ref={searchInputRef}
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      onFocus={() => { if (searchResults.length > 0) setShowDropdown(true) }}
-                      placeholder="Start typing your address..."
-                      autoFocus
-                      className="pl-10 h-12 text-base"
-                    />
-                    {searchLoading && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        Searching...
-                      </div>
-                    )}
-
-                    {showDropdown && (
-                      <div
-                        ref={dropdownRef}
-                        className="absolute z-50 w-full mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden max-h-[320px] overflow-y-auto"
-                      >
-                        {searchResults.map((prop) => (
-                          <button
-                            key={prop.account_number}
-                            onClick={() => handleSelectProperty(prop)}
-                            className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 transition-colors"
-                          >
-                            {prop.address}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <AnimatePresence>
-                    {selectedProperty && !confirmed && (
-                      <motion.div
-                        key="confirmation"
-                        initial={{ opacity: 0, scale: 0.96 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.96 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                        className="mt-5 p-5 border-2 border-blue-200 rounded-xl bg-blue-50/30"
-                      >
-                        <p className="text-sm text-muted-foreground mb-2">Is this your property?</p>
-                        <p className="text-lg font-semibold text-slate-800 mb-4">{selectedProperty.address}</p>
-                        <div className="flex gap-3">
-                          <Button
-                            onClick={() => { setConfirmed(true); setStep(2) }}
-                            className="flex-1 bg-[#1A56A0] hover:bg-[#143F75] text-white"
-                          >
-                            Yes, that&apos;s it
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => { setSelectedProperty(null); setSearchQuery(''); setConfirmed(false) }}
-                            className="flex-1"
-                          >
-                            No, search again
-                          </Button>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {!selectedProperty && searchQuery.length < 3 && (
-                    <div className="mt-10 text-center text-muted-foreground">
-                      <Search className="size-10 mx-auto mb-3 stroke-1" />
-                      <p>Type your street address to get started</p>
-                    </div>
-                  )}
-                </motion.div>
-              )}
-
-              {step === 2 && (
-                <motion.div
-                  key="step2"
-                  variants={stepVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={stepTransition}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStep(1)}
-                    className="mb-4"
+        <RevealItem className="max-w-[560px] mx-auto px-5 pb-8">
+          <Card className="overflow-visible">
+            <CardContent className="p-6">
+              <AnimatePresence mode="wait">
+                {step === 1 && (
+                  <motion.div
+                    key="step1"
+                    variants={stepVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={stepTransition}
                   >
-                    &larr; Change property
-                  </Button>
-                  <h2 className="text-lg font-semibold text-slate-700 mb-5">Your Information</h2>
+                    <h2 className="text-lg font-semibold text-slate-700 mb-1">Find Your Property</h2>
+                    <p className="text-sm text-muted-foreground mb-6">
+                      Use this form to provide information about the water service line at your property.
+                    </p>
 
-                  <div className="space-y-5">
-                    <div className="space-y-2">
-                      <Label>
-                        Full Name <span className="text-red-500">*</span>
-                      </Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
                       <Input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        placeholder="Jane Smith"
-                        className="h-11"
+                        ref={searchInputRef}
+                        value={searchQuery}
+                        onChange={handleSearchChange}
+                        onFocus={() => { if (searchResults.length > 0) setShowDropdown(true) }}
+                        placeholder="Start typing your address..."
+                        autoFocus
+                        className="pl-10 h-12 text-base"
                       />
-                    </div>
+                      {searchLoading && (
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                          Searching...
+                        </div>
+                      )}
 
-                    <div className="space-y-2">
-                      <Label>
-                        Phone or Email <span className="text-red-500">*</span>
-                      </Label>
-                      <Input
-                        value={contact}
-                        onChange={(e) => setContact(e.target.value)}
-                        placeholder="(914) 555-1234 or jane@example.com"
-                        className="h-11"
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>
-                        When was your home built?{' '}
-                        <span className="text-muted-foreground font-normal">(optional)</span>
-                      </Label>
-                      <Select
-                        value={yearConstructed}
-                        onValueChange={setYearConstructed}
-                      >
-                        <SelectTrigger className="h-11">
-                          <SelectValue placeholder="Select a range..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {YEAR_OPTIONS.map((o) => (
-                            <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label>
-                        Has any work been done on your water line?{' '}
-                        <span className="text-muted-foreground font-normal">(optional)</span>
-                      </Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        {[
-                          { label: 'Yes', value: true },
-                          { label: 'No', value: false },
-                          { label: 'Not sure', value: 'unsure' },
-                        ].map((opt) => (
-                          <motion.div key={opt.label} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
-                            <Button
-                              type="button"
-                              variant={priorLineWork === opt.value ? 'default' : 'outline'}
-                              onClick={() => setPriorLineWork(opt.value)}
-                              className={`w-full ${
-                                priorLineWork === opt.value
-                                  ? 'bg-[#1A56A0] hover:bg-[#143F75]'
-                                  : ''
-                              }`}
+                      {showDropdown && (
+                        <div
+                          ref={dropdownRef}
+                          className="absolute z-50 w-full mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden max-h-[320px] overflow-y-auto"
+                        >
+                          {searchResults.map((prop) => (
+                            <button
+                              key={prop.account_number}
+                              onClick={() => handleSelectProperty(prop)}
+                              className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 transition-colors"
                             >
-                              {opt.label}
+                              {prop.address}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    <AnimatePresence>
+                      {selectedProperty && !confirmed && (
+                        <motion.div
+                          key="confirmation"
+                          initial={{ opacity: 0, scale: 0.96 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.96 }}
+                          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                          className="mt-5 p-5 border-2 border-blue-200 rounded-xl bg-blue-50/30"
+                        >
+                          <p className="text-sm text-muted-foreground mb-2">Is this your property?</p>
+                          <p className="text-lg font-semibold text-slate-800 mb-4">{selectedProperty.address}</p>
+                          <div className="flex gap-3">
+                            <Button
+                              onClick={() => { setConfirmed(true); setStep(2) }}
+                              className="flex-1 bg-[#1A56A0] hover:bg-[#143F75] text-white"
+                            >
+                              Yes, that&apos;s it
                             </Button>
-                          </motion.div>
-                        ))}
+                            <Button
+                              variant="outline"
+                              onClick={() => { setSelectedProperty(null); setSearchQuery(''); setConfirmed(false) }}
+                              className="flex-1"
+                            >
+                              No, search again
+                            </Button>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+
+                    {!selectedProperty && searchQuery.length < 3 && (
+                      <div className="mt-10 text-center text-muted-foreground">
+                        <Search className="size-10 mx-auto mb-3 stroke-1" />
+                        <p>Type your street address to get started</p>
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+
+                {step === 2 && (
+                  <motion.div
+                    key="step2"
+                    variants={stepVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={stepTransition}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStep(1)}
+                      className="mb-4"
+                    >
+                      &larr; Change property
+                    </Button>
+                    <h2 className="text-lg font-semibold text-slate-700 mb-5">Your Information</h2>
+
+                    <div className="space-y-5">
+                      <div className="space-y-2">
+                        <Label>
+                          Full Name <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          value={name}
+                          onChange={(e) => setName(e.target.value)}
+                          placeholder="Jane Smith"
+                          className="h-11"
+                        />
                       </div>
 
-                      <AnimatePresence>
-                        {priorLineWork === true && (
-                          <motion.div
-                            key="prior-notes"
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="mt-3 space-y-2">
-                              <Label>Please describe the work done</Label>
-                              <Textarea
-                                value={priorLineNotes}
-                                onChange={(e) => setPriorLineNotes(e.target.value)}
-                                placeholder="e.g. pipe replaced from meter to street in 2015..."
-                                rows={3}
-                              />
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
+                      <div className="space-y-2">
+                        <Label>
+                          Phone or Email <span className="text-red-500">*</span>
+                        </Label>
+                        <Input
+                          value={contact}
+                          onChange={(e) => setContact(e.target.value)}
+                          placeholder="(914) 555-1234 or jane@example.com"
+                          className="h-11"
+                        />
+                      </div>
 
-                    {step2Error && (
-                      <Alert variant="destructive">
+                      <div className="space-y-2">
+                        <Label>
+                          When was your home built?{' '}
+                          <span className="text-muted-foreground font-normal">(optional)</span>
+                        </Label>
+                        <Select
+                          value={yearConstructed}
+                          onValueChange={setYearConstructed}
+                        >
+                          <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select a range..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {YEAR_OPTIONS.map((o) => (
+                              <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label>
+                          Has any work been done on your water line?{' '}
+                          <span className="text-muted-foreground font-normal">(optional)</span>
+                        </Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {[
+                            { label: 'Yes', value: true },
+                            { label: 'No', value: false },
+                            { label: 'Not sure', value: 'unsure' },
+                          ].map((opt) => (
+                            <motion.div key={opt.label} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
+                              <Button
+                                type="button"
+                                variant={priorLineWork === opt.value ? 'default' : 'outline'}
+                                onClick={() => setPriorLineWork(opt.value)}
+                                className={`w-full ${
+                                  priorLineWork === opt.value
+                                    ? 'bg-[#1A56A0] hover:bg-[#143F75]'
+                                    : ''
+                                }`}
+                              >
+                                {opt.label}
+                              </Button>
+                            </motion.div>
+                          ))}
+                        </div>
+
+                        <AnimatePresence>
+                          {priorLineWork === true && (
+                            <motion.div
+                              key="prior-notes"
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: 'auto' }}
+                              exit={{ opacity: 0, height: 0 }}
+                              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="mt-3 space-y-2">
+                                <Label>Please describe the work done</Label>
+                                <Textarea
+                                  value={priorLineNotes}
+                                  onChange={(e) => setPriorLineNotes(e.target.value)}
+                                  placeholder="e.g. pipe replaced from meter to street in 2015..."
+                                  rows={3}
+                                />
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+
+                      {step2Error && (
+                        <Alert variant="destructive">
+                          <AlertCircle className="size-4" />
+                          <AlertDescription>{step2Error}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      <Button
+                        onClick={handleStep2Next}
+                        className="w-full h-12 text-base font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
+                      >
+                        Next &rarr;
+                      </Button>
+                    </div>
+                  </motion.div>
+                )}
+
+                {step === 3 && (
+                  <motion.div
+                    key="step3"
+                    variants={stepVariants}
+                    initial="initial"
+                    animate="animate"
+                    exit="exit"
+                    transition={stepTransition}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setStep(2)}
+                      className="mb-4"
+                    >
+                      &larr; Back
+                    </Button>
+                    <h2 className="text-lg font-semibold text-slate-700 mb-1">
+                      Photos <span className="text-muted-foreground font-normal text-sm">(optional)</span>
+                    </h2>
+                    <p className="text-sm text-muted-foreground mb-5">
+                      If possible, please upload photos of your water pipe where it enters your home — usually
+                      in the basement near the water meter.
+                    </p>
+
+                    {photoPreviewURLs.length > 0 && (
+                      <div className="flex gap-3 mb-4 flex-wrap">
+                        {photoPreviewURLs.map((url, idx) => (
+                          <div key={idx} className="relative">
+                            <img src={url} alt={`Photo ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border" />
+                            <button
+                              type="button"
+                              onClick={() => removePhoto(idx)}
+                              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {photos.length < 3 && (
+                      <>
+                        <input
+                          ref={photoInputRef}
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={handlePhotoChange}
+                          className="hidden"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => photoInputRef.current?.click()}
+                          className="w-full h-16 border-dashed mb-3"
+                        >
+                          <Camera className="size-5" />
+                          Add Photo {photos.length > 0 ? `(${photos.length}/3)` : ''}
+                        </Button>
+                      </>
+                    )}
+
+                    {submitError && (
+                      <Alert variant="destructive" className="mb-4">
                         <AlertCircle className="size-4" />
-                        <AlertDescription>{step2Error}</AlertDescription>
+                        <AlertDescription>{submitError}</AlertDescription>
                       </Alert>
                     )}
 
                     <Button
-                      onClick={handleStep2Next}
-                      className="w-full h-12 text-base font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
-                    >
-                      Next &rarr;
-                    </Button>
-                  </div>
-                </motion.div>
-              )}
-
-              {step === 3 && (
-                <motion.div
-                  key="step3"
-                  variants={stepVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={stepTransition}
-                >
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setStep(2)}
-                    className="mb-4"
-                  >
-                    &larr; Back
-                  </Button>
-                  <h2 className="text-lg font-semibold text-slate-700 mb-1">
-                    Photos <span className="text-muted-foreground font-normal text-sm">(optional)</span>
-                  </h2>
-                  <p className="text-sm text-muted-foreground mb-5">
-                    If possible, please upload photos of your water pipe where it enters your home — usually
-                    in the basement near the water meter.
-                  </p>
-
-                  {photoPreviewURLs.length > 0 && (
-                    <div className="flex gap-3 mb-4 flex-wrap">
-                      {photoPreviewURLs.map((url, idx) => (
-                        <div key={idx} className="relative">
-                          <img src={url} alt={`Photo ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border" />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {photos.length < 3 && (
-                    <>
-                      <input
-                        ref={photoInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => photoInputRef.current?.click()}
-                        className="w-full h-16 border-dashed mb-3"
-                      >
-                        <Camera className="size-5" />
-                        Add Photo {photos.length > 0 ? `(${photos.length}/3)` : ''}
-                      </Button>
-                    </>
-                  )}
-
-                  {submitError && (
-                    <Alert variant="destructive" className="mb-4">
-                      <AlertCircle className="size-4" />
-                      <AlertDescription>{submitError}</AlertDescription>
-                    </Alert>
-                  )}
-
-                  <Button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="w-full h-14 text-lg font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
-                  >
-                    {loading ? 'Submitting...' : 'Submit'}
-                  </Button>
-
-                  {!loading && (
-                    <button
                       onClick={handleSubmit}
-                      className="w-full text-center text-muted-foreground text-sm mt-3 hover:text-slate-600 py-2"
+                      disabled={loading}
+                      className="w-full h-14 text-lg font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
                     >
-                      Skip photos and submit
-                    </button>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
+                      {loading ? 'Submitting...' : 'Submit'}
+                    </Button>
+
+                    {!loading && (
+                      <button
+                        onClick={handleSubmit}
+                        className="w-full text-center text-muted-foreground text-sm mt-3 hover:text-slate-600 py-2"
+                      >
+                        Skip photos and submit
+                      </button>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </CardContent>
+          </Card>
+        </RevealItem>
+      </PageReveal>
+    </motion.div>
   )
 }

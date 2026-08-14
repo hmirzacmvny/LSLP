@@ -344,6 +344,43 @@ Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_
 - Primary color: `#1A56A0` via inline style (not overriding shadcn CSS vars)
 - All emojis replaced with lucide-react icons (CheckCircle, WifiOff, Search, Camera, MapPin, etc.)
 
+### Visual System — Surface Depth, Page Reveals, Route Transitions
+
+**Three-tier surface depth system** (CSS classes in `src/index.css`):
+
+| Tier | Class | Treatment |
+|---|---|---|
+| Arrival | `.arrival-surface` | Radial light bloom + 48px white survey grid at 6% opacity over navy gradient |
+| Canvas | `.canvas-surface` | 48px navy survey grid at 3% opacity over subtle slate gradient |
+| Data | (none — flat white) | Cards/tables/panels: no gradients, no patterns, no texture |
+
+**Page-load reveals** (`src/components/PageReveal.jsx`):
+- `PageReveal` — framer-motion stagger container (`staggerChildren: 0.04`)
+- `RevealItem` — spring-animated child (`stiffness: 380, damping: 30`, `y: 8` → `y: 0`)
+- Applied to: PropertiesList (3 items), PropertyDetail (4 items), NewVisit (2 items), NewOutreach (2 items), SubmitForm (2 items)
+- Table containers reveal as one unit; individual rows never animate
+- Success/offline confirmation screens use standalone `motion.div` with spring scale-in
+
+**App-shell route transitions** (`src/App.jsx`):
+- `ShellRoutes` component: Navbar persists outside AnimatePresence; content area wrapped in `AnimatePresence mode="wait"` keyed on `location.pathname`
+- `MotionConfig reducedMotion="user"` at root respects `prefers-reduced-motion`
+- Login and SubmitForm are standalone routes outside the shell — own entrance animations
+- All routes within the shell animate identically (spring opacity fade, `stiffness: 400, damping: 35`)
+
+**Files changed:**
+- `src/index.css` — added `.canvas-surface` and `.arrival-surface` CSS classes after `@layer utilities`
+- `src/components/PageReveal.jsx` — new file
+- `src/App.jsx` — full rewrite: `ShellRoutes` pattern with AnimatePresence
+- `src/components/RequireAuth.jsx` — removed hardcoded bg, uses `calc(100dvh - 68px)` for loading centering
+- `src/pages/Login.jsx` — uses `.arrival-surface`, framer-motion stagger entrance
+- `src/pages/Dashboard/PropertiesList.jsx` — PageReveal wrapper (3 RevealItems)
+- `src/pages/Dashboard/PropertyDetail.jsx` — PageReveal wrapper (4 RevealItems)
+- `src/pages/Dashboard/NewVisit.jsx` — PageReveal wrapper + spring success/offline screens
+- `src/pages/Dashboard/NewOutreach.jsx` — PageReveal wrapper + spring success screen
+- `src/pages/FieldApp/FieldVisitForm.jsx` — removed own bg/min-h-screen, adjusted heights to `calc(100dvh - 68px)`
+- `src/pages/Portal/SubmitForm.jsx` — canvas-surface bg, survey grid on portal header, PageReveal on stepper/card
+- `docs/CLAUDE.md` — added "Visual system" section (§8)
+
 ---
 
 ## External Services Configured

@@ -229,7 +229,7 @@ export default function FieldVisitForm() {
 
   if (submitted)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F8FAFC]">
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100dvh - 68px)' }}>
         <motion.div
           className="text-center p-10"
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -245,7 +245,7 @@ export default function FieldVisitForm() {
 
   if (offlineSaved)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#F8FAFC]">
+      <div className="flex items-center justify-center" style={{ minHeight: 'calc(100dvh - 68px)' }}>
         <motion.div
           className="text-center p-10"
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
@@ -264,291 +264,289 @@ export default function FieldVisitForm() {
   const addressDisplay = selectedProperty?.address || searchQuery.trim()
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
-      <AnimatePresence mode="wait">
-        {step === 1 ? (
-          <motion.div
-            key="step1"
-            variants={stepVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={stepTransition}
-          >
-            <div className="p-5 max-w-xl mx-auto">
-              <Card className="overflow-visible">
-                <CardContent className="p-6">
-                  <h2 className="text-lg font-semibold text-slate-700 mb-4">Find a property</h2>
+    <AnimatePresence mode="wait">
+      {step === 1 ? (
+        <motion.div
+          key="step1"
+          variants={stepVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={stepTransition}
+        >
+          <div className="p-5 max-w-xl mx-auto">
+            <Card className="overflow-visible">
+              <CardContent className="p-6">
+                <h2 className="text-lg font-semibold text-slate-700 mb-4">Find a property</h2>
 
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
-                    <Input
-                      ref={searchInputRef}
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                      onFocus={() => { if (searchResults.length > 0) setShowDropdown(true) }}
-                      placeholder="Search address or account number..."
-                      autoFocus
-                      className="pl-10 h-12 text-base"
-                    />
-                    {searchLoading && (
-                      <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                        Searching...
-                      </div>
-                    )}
-
-                    {showDropdown && (
-                      <div
-                        ref={dropdownRef}
-                        className="absolute z-50 w-full mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden"
-                      >
-                        {searchResults.map((prop) => (
-                          <button
-                            key={prop.account_number}
-                            onClick={() => handleSelectProperty(prop)}
-                            className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <div className="font-medium text-slate-800">{prop.address}</div>
-                                <div className="text-xs text-muted-foreground font-mono tabular-nums">{prop.account_number}</div>
-                              </div>
-                              <span className={`text-xs font-medium ${getMaterial(prop.hs_service).text}`}>
-                                {prop.hs_service || ''}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <AnimatePresence>
-                    {selectedProperty && (
-                      <motion.div
-                        key="confirmation"
-                        initial={{ opacity: 0, scale: 0.96 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.96 }}
-                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                        className="mt-5 p-4 border-2 border-blue-200 rounded-xl"
-                      >
-                        <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Selected Property</p>
-                        <p className="text-xl font-semibold text-slate-800 mb-1">{selectedProperty.address}</p>
-                        <p className="text-sm font-mono tabular-nums text-muted-foreground mb-3">{selectedProperty.account_number}</p>
-                        <div className="flex gap-4 text-sm flex-wrap">
-                          <span className="text-muted-foreground">House side: <strong className={getMaterial(selectedProperty.hs_service).text}>{selectedProperty.hs_service || '—'}</strong></span>
-                          <span className="text-muted-foreground">Street side: <strong className={getMaterial(selectedProperty.ss_service).text}>{selectedProperty.ss_service || '—'}</strong></span>
-                        </div>
-                        {selectedProperty.verified_status && (
-                          <Badge variant="outline" className="mt-3 bg-blue-50 text-blue-700 border-blue-200">{selectedProperty.verified_status}</Badge>
-                        )}
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-
-                  {(selectedProperty || searchQuery.trim().length >= 6) && (
-                    <Button
-                      onClick={() => setStep(2)}
-                      className="mt-5 w-full h-14 text-lg font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
-                    >
-                      Continue
-                    </Button>
-                  )}
-
-                  {!selectedProperty && searchQuery.length < 3 && (
-                    <div className="mt-12 text-center text-muted-foreground">
-                      <Search className="size-12 mx-auto mb-3 stroke-1" />
-                      <div>Type at least 3 characters to search</div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    ref={searchInputRef}
+                    value={searchQuery}
+                    onChange={handleSearchChange}
+                    onFocus={() => { if (searchResults.length > 0) setShowDropdown(true) }}
+                    placeholder="Search address or account number..."
+                    autoFocus
+                    className="pl-10 h-12 text-base"
+                  />
+                  {searchLoading && (
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                      Searching...
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            key="step2"
-            variants={stepVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={stepTransition}
-            className="pb-24"
-          >
-            <div className="px-5 pt-4 max-w-xl mx-auto">
-              <button
-                onClick={() => setStep(1)}
-                className="w-full flex items-center gap-3 p-4 text-left rounded-xl border bg-blue-50/50 hover:bg-blue-100/50 transition-colors"
-              >
-                <ArrowLeft className="size-4 text-[#1A56A0] shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Selected Property</div>
-                  <div className="text-base font-semibold text-slate-800 truncate">{addressDisplay}</div>
-                  {selectedProperty && (
-                    <div className="text-sm font-mono tabular-nums text-muted-foreground">{selectedProperty.account_number}</div>
-                  )}
-                </div>
-              </button>
-            </div>
 
-            <div className="px-5 pt-4 max-w-xl mx-auto space-y-5">
-              <Card>
-                <CardContent className="p-4 flex items-center gap-3">
-                  <MapPin className={`size-5 ${gpsStatus === 'captured' ? 'text-green-600' : 'text-muted-foreground'}`} />
-                  <span className={`text-sm font-medium ${gpsStatus === 'captured' ? 'text-green-600' : 'text-muted-foreground'}`}>
-                    {gpsStatus === 'captured' && 'Location captured'}
-                    {gpsStatus === 'unavailable' && 'Location unavailable'}
-                    {gpsStatus === 'capturing' && 'Capturing location...'}
-                  </span>
-                </CardContent>
-              </Card>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Access Granted</p>
-                <div className="space-y-2">
-                  {ACCESS_OPTIONS.map((opt) => (
-                    <motion.div key={opt.value} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
-                      <Button
-                        type="button"
-                        variant={form.access_granted === opt.value ? 'default' : 'outline'}
-                        onClick={() => setForm({ ...form, access_granted: opt.value })}
-                        className={`w-full min-h-[52px] text-sm font-semibold ${
-                          form.access_granted === opt.value ? opt.active : ''
-                        }`}
-                      >
-                        {opt.value}
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Verification Outcome</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {OUTCOME_OPTIONS.map((opt) => (
-                    <motion.div key={opt.value} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
-                      <Button
-                        type="button"
-                        variant={form.verification_outcome === opt.value ? 'default' : 'outline'}
-                        onClick={() => setForm({ ...form, verification_outcome: opt.value })}
-                        className={`w-full min-h-[52px] text-sm font-semibold ${
-                          form.verification_outcome === opt.value ? opt.active : ''
-                        }`}
-                      >
-                        {opt.value}
-                      </Button>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Property Type</p>
-                <Select
-                  value={form.property_type}
-                  onValueChange={(v) => setForm({ ...form, property_type: v })}
-                >
-                  <SelectTrigger className="h-12 text-base">
-                    <SelectValue placeholder="Select type..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PROPERTY_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Your Initials</p>
-                <Input
-                  value={form.initials}
-                  onChange={(e) => setForm({ ...form, initials: e.target.value })}
-                  placeholder="e.g. MN"
-                  maxLength={5}
-                  className="h-12 text-base uppercase"
-                />
-              </div>
-
-              <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Notes</p>
-                <Textarea
-                  value={form.notes}
-                  onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                  placeholder="Any additional observations..."
-                  rows={3}
-                  className="text-base"
-                />
-              </div>
-
-              <Card>
-                <CardContent className="p-4">
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                    Photos {photos.length > 0 && `(${photos.length}/3)`}
-                  </p>
-
-                  {photoPreviewURLs.length > 0 && (
-                    <div className="flex gap-3 mb-3 flex-wrap">
-                      {photoPreviewURLs.map((url, idx) => (
-                        <div key={idx} className="relative">
-                          <img src={url} alt={`Photo ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border" />
-                          <button
-                            type="button"
-                            onClick={() => removePhoto(idx)}
-                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </div>
+                  {showDropdown && (
+                    <div
+                      ref={dropdownRef}
+                      className="absolute z-50 w-full mt-1 bg-white border border-border rounded-lg shadow-lg overflow-hidden"
+                    >
+                      {searchResults.map((prop) => (
+                        <button
+                          key={prop.account_number}
+                          onClick={() => handleSelectProperty(prop)}
+                          className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b last:border-0 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <div className="font-medium text-slate-800">{prop.address}</div>
+                              <div className="text-xs text-muted-foreground font-mono tabular-nums">{prop.account_number}</div>
+                            </div>
+                            <span className={`text-xs font-medium ${getMaterial(prop.hs_service).text}`}>
+                              {prop.hs_service || ''}
+                            </span>
+                          </div>
+                        </button>
                       ))}
                     </div>
                   )}
+                </div>
 
-                  {photos.length < 3 && (
-                    <>
-                      <input
-                        ref={photoInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        onChange={handlePhotoChange}
-                        className="hidden"
-                      />
-                      <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => photoInputRef.current?.click()}
-                        className="w-full min-h-[52px] border-dashed"
-                      >
-                        <Camera className="size-5" />
-                        Take Photo
-                      </Button>
-                    </>
+                <AnimatePresence>
+                  {selectedProperty && (
+                    <motion.div
+                      key="confirmation"
+                      initial={{ opacity: 0, scale: 0.96 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.96 }}
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      className="mt-5 p-4 border-2 border-blue-200 rounded-xl"
+                    >
+                      <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-2">Selected Property</p>
+                      <p className="text-xl font-semibold text-slate-800 mb-1">{selectedProperty.address}</p>
+                      <p className="text-sm font-mono tabular-nums text-muted-foreground mb-3">{selectedProperty.account_number}</p>
+                      <div className="flex gap-4 text-sm flex-wrap">
+                        <span className="text-muted-foreground">House side: <strong className={getMaterial(selectedProperty.hs_service).text}>{selectedProperty.hs_service || '—'}</strong></span>
+                        <span className="text-muted-foreground">Street side: <strong className={getMaterial(selectedProperty.ss_service).text}>{selectedProperty.ss_service || '—'}</strong></span>
+                      </div>
+                      {selectedProperty.verified_status && (
+                        <Badge variant="outline" className="mt-3 bg-blue-50 text-blue-700 border-blue-200">{selectedProperty.verified_status}</Badge>
+                      )}
+                    </motion.div>
                   )}
-                </CardContent>
-              </Card>
+                </AnimatePresence>
 
-              {error && (
-                <Alert variant="destructive">
-                  <AlertCircle className="size-4" />
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
+                {(selectedProperty || searchQuery.trim().length >= 6) && (
+                  <Button
+                    onClick={() => setStep(2)}
+                    className="mt-5 w-full h-14 text-lg font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
+                  >
+                    Continue
+                  </Button>
+                )}
+
+                {!selectedProperty && searchQuery.length < 3 && (
+                  <div className="mt-12 text-center text-muted-foreground">
+                    <Search className="size-12 mx-auto mb-3 stroke-1" />
+                    <div>Type at least 3 characters to search</div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </motion.div>
+      ) : (
+        <motion.div
+          key="step2"
+          variants={stepVariants}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          transition={stepTransition}
+          className="pb-24"
+        >
+          <div className="px-5 pt-4 max-w-xl mx-auto">
+            <button
+              onClick={() => setStep(1)}
+              className="w-full flex items-center gap-3 p-4 text-left rounded-xl border bg-blue-50/50 hover:bg-blue-100/50 transition-colors"
+            >
+              <ArrowLeft className="size-4 text-[#1A56A0] shrink-0" />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Selected Property</div>
+                <div className="text-base font-semibold text-slate-800 truncate">{addressDisplay}</div>
+                {selectedProperty && (
+                  <div className="text-sm font-mono tabular-nums text-muted-foreground">{selectedProperty.account_number}</div>
+                )}
+              </div>
+            </button>
+          </div>
+
+          <div className="px-5 pt-4 max-w-xl mx-auto space-y-5">
+            <Card>
+              <CardContent className="p-4 flex items-center gap-3">
+                <MapPin className={`size-5 ${gpsStatus === 'captured' ? 'text-green-600' : 'text-muted-foreground'}`} />
+                <span className={`text-sm font-medium ${gpsStatus === 'captured' ? 'text-green-600' : 'text-muted-foreground'}`}>
+                  {gpsStatus === 'captured' && 'Location captured'}
+                  {gpsStatus === 'unavailable' && 'Location unavailable'}
+                  {gpsStatus === 'capturing' && 'Capturing location...'}
+                </span>
+              </CardContent>
+            </Card>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Access Granted</p>
+              <div className="space-y-2">
+                {ACCESS_OPTIONS.map((opt) => (
+                  <motion.div key={opt.value} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
+                    <Button
+                      type="button"
+                      variant={form.access_granted === opt.value ? 'default' : 'outline'}
+                      onClick={() => setForm({ ...form, access_granted: opt.value })}
+                      className={`w-full min-h-[52px] text-sm font-semibold ${
+                        form.access_granted === opt.value ? opt.active : ''
+                      }`}
+                    >
+                      {opt.value}
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
             </div>
 
-            <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg">
-              <Button
-                type="button"
-                onClick={handleSubmit}
-                disabled={loading}
-                className="w-full h-14 text-lg font-semibold max-w-xl mx-auto block bg-[#1A56A0] hover:bg-[#143F75] text-white"
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Verification Outcome</p>
+              <div className="grid grid-cols-2 gap-2">
+                {OUTCOME_OPTIONS.map((opt) => (
+                  <motion.div key={opt.value} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
+                    <Button
+                      type="button"
+                      variant={form.verification_outcome === opt.value ? 'default' : 'outline'}
+                      onClick={() => setForm({ ...form, verification_outcome: opt.value })}
+                      className={`w-full min-h-[52px] text-sm font-semibold ${
+                        form.verification_outcome === opt.value ? opt.active : ''
+                      }`}
+                    >
+                      {opt.value}
+                    </Button>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Property Type</p>
+              <Select
+                value={form.property_type}
+                onValueChange={(v) => setForm({ ...form, property_type: v })}
               >
-                {loading ? 'Saving...' : !navigator.onLine ? 'Save Offline' : 'Submit Visit'}
-              </Button>
+                <SelectTrigger className="h-12 text-base">
+                  <SelectValue placeholder="Select type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PROPERTY_TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Your Initials</p>
+              <Input
+                value={form.initials}
+                onChange={(e) => setForm({ ...form, initials: e.target.value })}
+                placeholder="e.g. MN"
+                maxLength={5}
+                className="h-12 text-base uppercase"
+              />
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Notes</p>
+              <Textarea
+                value={form.notes}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Any additional observations..."
+                rows={3}
+                className="text-base"
+              />
+            </div>
+
+            <Card>
+              <CardContent className="p-4">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                  Photos {photos.length > 0 && `(${photos.length}/3)`}
+                </p>
+
+                {photoPreviewURLs.length > 0 && (
+                  <div className="flex gap-3 mb-3 flex-wrap">
+                    {photoPreviewURLs.map((url, idx) => (
+                      <div key={idx} className="relative">
+                        <img src={url} alt={`Photo ${idx + 1}`} className="w-24 h-24 object-cover rounded-xl border" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow"
+                        >
+                          <X className="size-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {photos.length < 3 && (
+                  <>
+                    <input
+                      ref={photoInputRef}
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handlePhotoChange}
+                      className="hidden"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => photoInputRef.current?.click()}
+                      className="w-full min-h-[52px] border-dashed"
+                    >
+                      <Camera className="size-5" />
+                      Take Photo
+                    </Button>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
+            {error && (
+              <Alert variant="destructive">
+                <AlertCircle className="size-4" />
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+          </div>
+
+          <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg">
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full h-14 text-lg font-semibold max-w-xl mx-auto block bg-[#1A56A0] hover:bg-[#143F75] text-white"
+            >
+              {loading ? 'Saving...' : !navigator.onLine ? 'Save Offline' : 'Submit Visit'}
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

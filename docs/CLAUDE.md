@@ -216,7 +216,25 @@ old_value, new_value, changed_by, changed_at
 
 ---
 
-## 8. Things to Never Do
+## 8. Visual System
+
+Surfaces fall into three tiers. Each gets a specific CSS treatment, and the tiers must not be mixed.
+
+**Arrival surfaces** (Login, customer portal header) — the only places where someone arrives rather than works. These get real atmospheric depth: a radial light bloom over the navy gradient, plus a 48px engineering survey grid in white at 6% opacity. Use the `.arrival-surface` class or replicate its layered background. The grid evokes survey/infrastructure mapping at a scale that reads as texture, not decoration.
+
+**Canvas surfaces** (every working screen's page background) — a barely-perceptible treatment replacing flat `#F8FAFC`. A 48px engineering survey grid in `rgba(26, 86, 160, 0.03)` over a subtle directional gradient (`#F8FAFC` → `#F1F5F9` → `#F8FAFC`). Use the `.canvas-surface` class. The grid is intentionally near-invisible — it should register as "not flat" without being consciously noticed.
+
+**Data surfaces** (cards, tables, form panels) — flat, near-white, no gradients, no patterns, no texture. These exist to present information with zero visual competition. Never add background treatments to data containers.
+
+The survey grid spacing (48px) was chosen because it references engineering graph paper and survey plats — appropriate for municipal water infrastructure software handling EPA compliance data.
+
+**Page-load reveals:** Each route gets a single choreographed entrance on mount using the `PageReveal` + `RevealItem` components. Stagger interval is 40ms, spring physics (`stiffness: 380, damping: 30`), total sequence under 400ms. Do not add incidental motion elsewhere (hover-scale on cards, animated icons, gratuitous transitions). Do not stagger individual table rows — the table container reveals as one unit.
+
+**Route transitions:** Live in the app shell (`App.jsx` → `ShellRoutes`), never per-page. `AnimatePresence mode="wait"` wraps the `<Routes>` component, keyed on `location.pathname`. Login and SubmitForm are standalone routes outside the shell with their own entrance animations. `MotionConfig reducedMotion="user"` is set at the root to respect `prefers-reduced-motion`.
+
+---
+
+## 9. Things to Never Do
 
 - ❌ Never paste secrets, passwords, or API keys in chat or commit messages
 - ❌ Never use `DELETE` without a `WHERE` clause in pgAdmin
@@ -233,7 +251,7 @@ old_value, new_value, changed_by, changed_at
 
 ---
 
-## 9. Things to Always Do
+## 10. Things to Always Do
 
 - ✅ When adding a new model, update: model file, schema file, API route file, `lib/api.js` on the frontend, and `alembic/env.py` imports
 - ✅ When adding a new field to a table, write an Alembic migration: `alembic revision --autogenerate -m "description"` then `alembic upgrade head`
@@ -245,7 +263,7 @@ old_value, new_value, changed_by, changed_at
 
 ---
 
-## 10. Running the Project
+## 11. Running the Project
 
 **Backend (Terminal 1):**
 ```powershell
@@ -266,7 +284,7 @@ Both must be running for the dashboard to work.
 
 ---
 
-## 11. Reference Files
+## 12. Reference Files
 
 - `PROGRESS.md` — what's built, file by file
 - `ROADMAP.md` — what's coming, phase by phase
