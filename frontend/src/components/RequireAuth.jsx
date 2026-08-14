@@ -17,7 +17,7 @@ export default function RequireAuth({ children }) {
   if (user === undefined) {
     // Firebase still initializing — avoid flash-redirect
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center">
         <p className="text-sm text-gray-400">Loading...</p>
       </div>
     )

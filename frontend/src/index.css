@@ -117,6 +117,16 @@
     --sidebar-ring: oklch(0.556 0 0);
 }
 
+:root {
+  --civic: #1A56A0;
+  --civic-dark: #143F75;
+  --color-lead: #DC2626;
+  --color-copper: #16A34A;
+  --color-galvanized: #EA580C;
+  --surface: #F8FAFC;
+  --surface-muted: #F1F5F9;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;
@@ -126,5 +136,13 @@
     }
   html {
     @apply font-sans;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
     }
+}
+
+@layer utilities {
+  .tabular-nums {
+    font-variant-numeric: tabular-nums;
+  }
 }

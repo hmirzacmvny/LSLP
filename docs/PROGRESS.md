@@ -166,7 +166,8 @@ lucide-react, @fontsource-variable/inter, tw-animate-css
 |---|---|---|
 | `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor | ✅ Updated Phase 2.1 |
 | `firebase.js` | Firebase app init from `VITE_*` env vars, exports `auth` | ✅ New Phase 2.1 |
-| `design.js` | Design tokens: `statusColors`, `materialColors`, `appColors` | ✅ New (UI redesign) |
+| `design.js` | Legacy design tokens (deprecated — use `design-system.js`) | ✅ Superseded |
+| `design-system.js` | Civic Modern design system: colors, materialConfig, statusConfig, getMaterial/getStatus helpers, typeScale, layout tokens | ✅ New (Civic Modern) |
 | `utils.js` | shadcn `cn()` helper (clsx + tailwind-merge) | ✅ New (shadcn init) |
 
 ### `src/components/`
@@ -174,7 +175,7 @@ lucide-react, @fontsource-variable/inter, tw-animate-css
 |---|---|---|
 | `Navbar.jsx` | Top nav bar (#1A56A0 bg, MV seal, user dropdown, mobile hamburger via Sheet), sync indicator badges | ✅ Redesigned (shadcn) |
 | `RequireAuth.jsx` | Auth gate — loading state during Firebase init, redirect to `/login` if unauthed | ✅ New Phase 2.1 |
-| `ui/*.jsx` | 17 shadcn/ui components: button, input, label, select, textarea, card, badge, table, tabs, separator, avatar, dropdown-menu, alert, skeleton, dialog, sheet, sonner | ✅ Installed |
+| `ui/*.jsx` | 19 shadcn/ui components: button, input, input-group, label, select, textarea, card, badge, table, tabs, separator, avatar, dropdown-menu, alert, skeleton, dialog, sheet, sonner, command, popover | ✅ Installed |
 
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
@@ -315,25 +316,26 @@ Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_
 
 ### UI Redesign — shadcn/ui + Mount Vernon Seal
 
-**Design system:** `src/lib/design.js` — shared color tokens for status badges and material indicators.
+**Design system:** `src/lib/design-system.js` — centralized tokens: `colors` (civic blue, semantic material/status colors), `materialConfig` (per-material color/badge/border/dot classes), `statusConfig` (per-status badge classes), helper functions `getMaterial()` / `getStatus()`, `typeScale` (pageTitle, sectionTitle, body, caption, label, data), `layout` (page, narrowPage, cardGrid, stack). CSS custom properties added to `src/index.css` (`--civic`, `--civic-dark`, semantic colors) plus `tabular-nums` utility class.
 
 **shadcn/ui setup:**
 - Preset: Radix UI + Luma
 - Icon library: lucide-react
 - Font: Inter Variable (`@fontsource-variable/inter`)
 - Base color: neutral, CSS variables enabled
-- 17 components installed in `src/components/ui/`
+- 19 components installed in `src/components/ui/` (added: command, popover, input-group)
+- framer-motion installed for spring physics (step transitions, confirmation cards, tap feedback)
 
-**All 8 pages redesigned:**
+**Civic Modern redesign (second pass):**
 
-1. **Navbar** — `#1A56A0` bg, MV seal (h-10 rounded), "LSLP Platform" + "City of Mount Vernon", ghost nav buttons with active highlight (`bg-white/20`), user avatar dropdown (email + Sign Out), mobile hamburger with Sheet drawer, sync badges restyled
-2. **Login** — gradient bg (`#1A56A0` to `#1e3a5f`), centered Card (max-w 400px), seal (h-20), Separator, shadcn Input/Label/Button, Alert for errors
-3. **PropertiesList** — search Input with Search icon, shadcn Table with Badge (statusColors) and material colors, Skeleton loading rows, empty state with Search icon
-4. **PropertyDetail** — breadcrumb, header Card with `border-l-4 border-l-blue-700`, 2x2 material grid (color-coded left borders), shadcn Tabs with Table for visits/outreach, Badge for access granted and attempt numbers
-5. **NewVisit** — Card form, tap-button selectors (Access: blue when selected; Outcome: Lead=red, Copper=green, Galvanized=orange), dashed photo upload area with Camera icon, thumbnails, character counter
-6. **NewOutreach** — Card form, customer-initiated nested Card with slide-in, character counters on both textareas, shadcn components throughout
-7. **FieldVisitForm** — minimal header (seal h-8 + "Field Visit"), Card for property search, GPS status Card with MapPin icon, full-width stacked access buttons (green/red/blue), 2-col outcome grid, Camera card, sticky submit button at bottom
-8. **SubmitForm** — seal header (h-16), progress bar (filled circles + connecting lines), Card form, Search icon input, confirmation card, tap buttons for prior line work, photo upload with X remove buttons, success screen with Badge reference number
+1. **Navbar** — 68px height, two-tone gradient bg (`#1A56A0` → `#143F75`), border-b, bare seal (no white circle), vertical divider + stacked text, segmented control nav with white pill active state + lucide icons, user initials avatar with role Badge in dropdown, mobile hamburger below lg breakpoint
+2. **Login** — gradient bg, centered Card, bare seal (h-20), font-semibold tracking-tight headings, civic blue button with hover state
+3. **PropertiesList** — debounced typeahead (250ms at 2+ chars) with floating suggestion list (top 8, keyboard nav, escape/arrow/enter), client-side pagination (25/50/100 per page, Previous/Next + numbered pages with ellipsis, "Showing X–Y of Z"), bordered table (no shadow), tabular-nums on data columns
+4. **PropertyDetail** — material value hierarchy with colored dots, verified/not-verified pills (ShieldCheck/ShieldQuestion icons), bordered tables, design-system tokens throughout
+5. **NewVisit** — shadcn Select for property type (replacing native `<select>`), tabular-nums on account number, civic blue buttons
+6. **NewOutreach** — shadcn Select with SelectGroup/SelectLabel for method and outcome (replacing native `<select>`), tabular-nums, civic blue theme
+7. **FieldVisitForm** — single Input search with absolute dropdown (no duplicate input), no local header bar (global Navbar handles location), shadcn Select for property type, card-style back-nav in step 2, framer-motion spring transitions (AnimatePresence step slides, confirmation card scale-in, whileTap on tap buttons, spring-in success/offline screens), tabular-nums on account numbers
+8. **SubmitForm** — warmer bg (`#FAFAF8`), stepper with green checkmarks for completed steps, single Input search with absolute dropdown (no duplicate input), shadcn Select for year constructed, framer-motion spring step transitions (AnimatePresence across all 3 steps + success), whileTap on prior-line-work buttons, spring-in confirmation card + success screen, tabular-nums reference number
 
 **Global design tokens applied:**
 - Page bg: `bg-slate-50`

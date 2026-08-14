@@ -3,23 +3,27 @@ import { useNavigate } from 'react-router-dom'
 import { createVisit } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
+import { typeScale } from '../../lib/design-system'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
+} from '@/components/ui/select'
 import { ArrowLeft, Camera, AlertCircle, CheckCircle, WifiOff } from 'lucide-react'
 
 const ACCT_RE = /^\d{6}-\d{3}$/
 
 const ACCESS_OPTIONS = ['Yes', 'No', 'No Answer', 'Refused', 'Scheduled']
 const OUTCOME_OPTIONS = [
-  { value: 'Lead', color: 'bg-red-600 text-white' },
-  { value: 'Copper', color: 'bg-green-600 text-white' },
-  { value: 'Galvanized', color: 'bg-orange-500 text-white' },
-  { value: 'Unknown', color: 'bg-slate-600 text-white' },
-  { value: 'Inaccessible', color: 'bg-slate-600 text-white' },
+  { value: 'Lead', active: 'bg-red-600 hover:bg-red-700 text-white border-red-600' },
+  { value: 'Copper', active: 'bg-green-600 hover:bg-green-700 text-white border-green-600' },
+  { value: 'Galvanized', active: 'bg-orange-500 hover:bg-orange-600 text-white border-orange-500' },
+  { value: 'Unknown', active: 'bg-slate-600 hover:bg-slate-700 text-white border-slate-600' },
+  { value: 'Inaccessible', active: 'bg-slate-600 hover:bg-slate-700 text-white border-slate-600' },
 ]
 
 function validate(form) {
@@ -82,7 +86,6 @@ export default function NewVisit() {
 
     setLoading(true)
 
-    // --- Offline path ---
     if (!navigator.onLine) {
       try {
         await db.pendingVisits.add({
@@ -103,7 +106,6 @@ export default function NewVisit() {
       return
     }
 
-    // --- Online path ---
     try {
       const formData = new FormData()
       Object.entries(form).forEach(([key, val]) => {
@@ -131,7 +133,7 @@ export default function NewVisit() {
         <Card className="max-w-md text-center">
           <CardContent className="p-10">
             <CheckCircle className="size-16 text-green-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-green-700 mb-2">Visit Logged</h2>
+            <h2 className="text-2xl font-semibold text-green-700 mb-2">Visit Logged</h2>
             <p className="text-muted-foreground">Redirecting to property page...</p>
           </CardContent>
         </Card>
@@ -144,7 +146,7 @@ export default function NewVisit() {
         <Card className="max-w-md text-center">
           <CardContent className="p-10">
             <WifiOff className="size-16 text-orange-500 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-orange-600 mb-2">Saved Locally</h2>
+            <h2 className="text-2xl font-semibold text-orange-600 mb-2">Saved Locally</h2>
             <p className="text-muted-foreground">
               You are offline. This visit has been saved to your device and will sync automatically
               when you are back online.
@@ -162,8 +164,8 @@ export default function NewVisit() {
           <ArrowLeft className="size-4" />
           Back
         </Button>
-        <h1 className="text-2xl font-bold text-slate-800">Log Field Visit</h1>
-        <p className="text-muted-foreground mt-1">Record a field inspection visit</p>
+        <h1 className={typeScale.pageTitle}>Log Field Visit</h1>
+        <p className="text-sm text-muted-foreground mt-1">Record a field inspection visit</p>
       </div>
 
       <Card>
@@ -179,6 +181,7 @@ export default function NewVisit() {
                 value={form.account_number}
                 onChange={handleChange}
                 placeholder="e.g. 003518-000"
+                className="font-mono tabular-nums"
                 aria-invalid={!!fieldErrors.account_number}
               />
               {fieldErrors.account_number && (
@@ -195,6 +198,7 @@ export default function NewVisit() {
                 onChange={handleChange}
                 placeholder="e.g. MN"
                 maxLength={5}
+                className="uppercase"
                 aria-invalid={!!fieldErrors.initials}
               />
               {fieldErrors.initials && (
@@ -202,7 +206,7 @@ export default function NewVisit() {
               )}
             </div>
 
-            {/* Access Granted — tap buttons */}
+            {/* Access Granted */}
             <div className="space-y-2">
               <Label>
                 Access Granted <span className="text-red-500">*</span>
@@ -221,7 +225,7 @@ export default function NewVisit() {
                     }}
                     className={
                       form.access_granted === opt
-                        ? 'bg-[#1A56A0] hover:bg-[#1A56A0]/90'
+                        ? 'bg-[#1A56A0] hover:bg-[#143F75]'
                         : ''
                     }
                   >
@@ -234,7 +238,7 @@ export default function NewVisit() {
               )}
             </div>
 
-            {/* Verification Outcome — tap buttons */}
+            {/* Verification Outcome */}
             <div className="space-y-2">
               <Label>Verification Outcome</Label>
               <div className="flex flex-wrap gap-2">
@@ -246,7 +250,7 @@ export default function NewVisit() {
                     size="sm"
                     onClick={() => setForm({ ...form, verification_outcome: opt.value })}
                     className={
-                      form.verification_outcome === opt.value ? opt.color : ''
+                      form.verification_outcome === opt.value ? opt.active : ''
                     }
                   >
                     {opt.value}
@@ -255,22 +259,24 @@ export default function NewVisit() {
               </div>
             </div>
 
-            {/* Property Type */}
+            {/* Property Type — shadcn Select */}
             <div className="space-y-2">
               <Label>Property Type</Label>
-              <select
-                name="property_type"
+              <Select
                 value={form.property_type}
-                onChange={handleChange}
-                className="flex h-9 w-full rounded-3xl border border-transparent bg-input/50 px-3 py-1 text-sm transition-[color,box-shadow,background-color] outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30"
+                onValueChange={(v) => setForm({ ...form, property_type: v })}
               >
-                <option value="">-- Select --</option>
-                <option value="One Family">One Family</option>
-                <option value="Two Family">Two Family</option>
-                <option value="Three Family">Three Family</option>
-                <option value="Commercial or Industrial">Commercial or Industrial</option>
-                <option value="Multi Family">Multi Family</option>
-              </select>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Select type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="One Family">One Family</SelectItem>
+                  <SelectItem value="Two Family">Two Family</SelectItem>
+                  <SelectItem value="Three Family">Three Family</SelectItem>
+                  <SelectItem value="Commercial or Industrial">Commercial or Industrial</SelectItem>
+                  <SelectItem value="Multi Family">Multi Family</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             {/* Notes */}
@@ -291,7 +297,7 @@ export default function NewVisit() {
                   <span />
                 )}
                 <span
-                  className={`text-xs ${form.notes.length > 500 ? 'text-red-500' : 'text-muted-foreground'}`}
+                  className={`text-xs tabular-nums ${form.notes.length > 500 ? 'text-red-500' : 'text-muted-foreground'}`}
                 >
                   {form.notes.length} / 500
                 </span>
@@ -326,7 +332,6 @@ export default function NewVisit() {
               )}
             </div>
 
-            {/* API error */}
             {apiError && (
               <Alert variant="destructive">
                 <AlertCircle className="size-4" />
@@ -334,12 +339,10 @@ export default function NewVisit() {
               </Alert>
             )}
 
-            {/* Submit */}
             <Button
               type="submit"
               disabled={loading}
-              className="w-full"
-              style={{ backgroundColor: '#1A56A0' }}
+              className="w-full bg-[#1A56A0] hover:bg-[#143F75] text-white"
             >
               {loading ? 'Saving...' : 'Log Visit'}
             </Button>

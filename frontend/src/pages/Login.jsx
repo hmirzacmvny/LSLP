@@ -27,7 +27,7 @@ export default function Login() {
     try {
       await signInWithEmailAndPassword(auth, email, password)
       navigate(from, { replace: true })
-    } catch (err) {
+    } catch {
       setError('Invalid email or password.')
     } finally {
       setLoading(false)
@@ -37,25 +37,23 @@ export default function Login() {
   return (
     <div
       className="min-h-screen flex items-center justify-center p-6"
-      style={{ background: 'linear-gradient(135deg, #1A56A0 0%, #1e3a5f 100%)' }}
+      style={{ background: 'linear-gradient(135deg, #1A56A0 0%, #143F75 100%)' }}
     >
-      <Card className="w-full max-w-[400px] shadow-2xl">
+      <Card className="w-full max-w-[400px]">
         <CardContent className="pt-8 pb-8 px-8 space-y-6">
-          {/* Seal + Titles */}
           <div className="text-center space-y-2">
             <img
               src="/seal.png"
               alt="City of Mount Vernon"
               className="h-20 w-20 object-contain mx-auto"
             />
-            <p className="text-sm text-slate-500">City of Mount Vernon</p>
-            <h1 className="text-2xl font-bold text-slate-800">LSLP Platform</h1>
-            <p className="text-sm text-muted-foreground">Lead Service Line Inventory System</p>
+            <p className="text-sm text-muted-foreground">City of Mount Vernon</p>
+            <h1 className="text-2xl font-semibold tracking-tight">LSLP Platform</h1>
+            <p className="text-xs text-muted-foreground">Lead Service Line Inventory System</p>
           </div>
 
           <Separator />
 
-          {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
@@ -92,8 +90,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full"
-              style={{ backgroundColor: '#1A56A0' }}
+              className="w-full bg-[#1A56A0] hover:bg-[#143F75] text-white"
             >
               {loading ? 'Signing in...' : 'Sign In'}
             </Button>
