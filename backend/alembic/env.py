@@ -36,6 +36,8 @@ from app.models.property import Property
 from app.models.visit import Visit
 from app.models.outreach import OutreachLog
 from app.models.user import User
+from app.models.submission import CustomerSubmission
+from app.models.audit_log import AuditLog
 
 target_metadata = Base.metadata
 

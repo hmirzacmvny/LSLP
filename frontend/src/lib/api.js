@@ -50,4 +50,17 @@ export const getOutreach = (params) =>
 export const createOutreach = (data) =>
   api.post('/api/outreach/', data)
 
+// SUBMISSIONS
+export const getSubmissions = (params) =>
+  api.get('/api/submissions/', { params })
+
+export const getSubmission = (id) =>
+  api.get(`/api/submissions/${id}`)
+
+export const getSubmissionCounts = () =>
+  api.get('/api/submissions/counts')
+
+export const reviewSubmission = (id, data) =>
+  api.patch(`/api/submissions/${id}/review`, data)
+
 export default api

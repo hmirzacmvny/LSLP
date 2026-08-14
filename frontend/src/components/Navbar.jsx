@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { signOut, onAuthStateChanged } from 'firebase/auth'
 import { auth } from '../lib/firebase'
 import { getPendingCount, syncPendingVisits } from '../lib/sync'
+import { getSubmissionCounts } from '../lib/api'
 import { colors } from '../lib/design-system'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,11 +24,12 @@ import {
   SheetClose,
 } from '@/components/ui/sheet'
 import {
-  Menu, LogOut, RefreshCw, Home, ClipboardPen, Megaphone, Smartphone,
+  Menu, LogOut, RefreshCw, Home, ClipboardPen, Megaphone, Smartphone, Inbox,
 } from 'lucide-react'
 
 const navLinks = [
   { label: 'Properties', path: '/', icon: Home },
+  { label: 'Submissions', path: '/submissions', icon: Inbox },
   { label: 'Log Visit', path: '/visits/new', icon: ClipboardPen },
   { label: 'Outreach', path: '/outreach/new', icon: Megaphone },
   { label: 'Field App', path: '/field', icon: Smartphone },
@@ -41,6 +43,7 @@ export default function Navbar() {
   const [failedCount, setFailedCount] = useState(0)
   const [user, setUser] = useState(null)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [submissionsPending, setSubmissionsPending] = useState(0)
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u))
@@ -73,6 +76,22 @@ export default function Navbar() {
       window.removeEventListener('lslp:sync-pending', onPending)
     }
   }, [])
+
+  useEffect(() => {
+    const loadSubmissionCounts = async () => {
+      try {
+        const res = await getSubmissionCounts()
+        setSubmissionsPending(res.data.pending)
+      } catch {}
+    }
+    if (user) loadSubmissionCounts()
+
+    const onSubmissionReviewed = () => {
+      if (user) loadSubmissionCounts()
+    }
+    window.addEventListener('lslp:submission-reviewed', onSubmissionReviewed)
+    return () => window.removeEventListener('lslp:submission-reviewed', onSubmissionReviewed)
+  }, [user])
 
   const handleRetry = () => {
     setSyncStatus(null)
@@ -153,11 +172,12 @@ export default function Navbar() {
             {navLinks.map((link) => {
               const Icon = link.icon
               const active = isActive(link.path)
+              const showBadge = link.path === '/submissions' && submissionsPending > 0
               return (
                 <button
                   key={link.path}
                   onClick={() => navigate(link.path)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
+                  className={`relative flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
                     active
                       ? 'bg-white text-[#1A56A0] shadow-sm'
                       : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -165,6 +185,11 @@ export default function Navbar() {
                 >
                   <Icon className="size-3.5" />
                   {link.label}
+                  {showBadge && (
+                    <span className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold tabular-nums rounded-full bg-amber-400 text-amber-900">
+                      {submissionsPending}
+                    </span>
+                  )}
                 </button>
               )
             })}
@@ -206,6 +231,7 @@ export default function Navbar() {
               <div className="flex flex-col gap-1 px-4 py-3">
                 {navLinks.map((link) => {
                   const Icon = link.icon
+                  const showBadge = link.path === '/submissions' && submissionsPending > 0
                   return (
                     <SheetClose key={link.path} asChild>
                       <Button
@@ -215,6 +241,11 @@ export default function Navbar() {
                       >
                         <Icon className="size-4" />
                         {link.label}
+                        {showBadge && (
+                          <span className="ml-auto inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold tabular-nums rounded-full bg-amber-100 text-amber-700">
+                            {submissionsPending}
+                          </span>
+                        )}
                       </Button>
                     </SheetClose>
                   )

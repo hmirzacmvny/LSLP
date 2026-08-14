@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.5 are complete. **Next: Phase 2.6 — Submission Review Queue.**
+Phases 2.1–2.6 are complete. **Next: Phase 2.7 — Phase 2 Wrap-Up.**
 
 **Pending action:** Run this in pgAdmin if not done yet:
 ```sql
@@ -81,11 +81,17 @@ Pre-phase hygiene tasks — all complete:
 - [x] `GET /api/submissions/property-search` — portal-key-gated property lookup (address only)
 - [x] `PORTAL_API_KEY=lslp-portal-2026` — add to `backend/.env`; key checked via `X-Portal-API-Key` header
 
-### 2.6 Customer Submission Review Queue (3 days)
-- [ ] Build `src/pages/Dashboard/SubmissionsQueue.jsx` — table of pending submissions
-- [ ] Build `src/pages/Dashboard/SubmissionDetail.jsx` — full submission view with Approve / Reject buttons
-- [ ] Backend: `GET /api/submissions/`, `GET /api/submissions/{id}`, `PATCH /api/submissions/{id}/review`
-- [ ] Approving a submission should update the property's `verified_status` if appropriate
+### 2.6 Customer Submission Review Queue ✅ COMPLETE (2026-08-14)
+- [x] Build `src/pages/Dashboard/SubmissionsQueue.jsx` — filter tabs (Pending/Approved/Rejected) with counts, pagination
+- [x] Build `src/pages/Dashboard/SubmissionDetail.jsx` — photo lightbox, customer info vs. property record, approve/reject dialogs
+- [x] Backend: `GET /api/submissions/counts` — badge counts for queue tabs and Navbar
+- [x] Backend: extended `PATCH /api/submissions/{id}/review` — accepts `verified_material`; on approval, updates property `verified_status` and writes `audit_log` entry
+- [x] Backend: `app/models/audit_log.py` — SQLAlchemy model for the `audit_log` table
+- [x] Backend: added `address` to `SubmissionResponse` (joined from properties)
+- [x] Frontend: Navbar "Submissions" item with amber pending count badge
+- [x] Frontend: sonner toast notifications on approve/reject actions
+- [x] Approval flow: reviewer selects material (Lead/Copper/Galvanized/Unknown) → property `verified_status` updated → `audit_log` entry created
+- [x] Rejection flow: optional reason stored in submission notes → property record untouched
 
 ### 2.7 Phase 2 Wrap-Up
 - [ ] Update `PROGRESS.md` to reflect all completed work

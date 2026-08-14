@@ -1,7 +1,10 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
+import { Toaster } from '@/components/ui/sonner'
 import PropertiesList from './pages/Dashboard/PropertiesList'
 import PropertyDetail from './pages/Dashboard/PropertyDetail'
+import SubmissionsQueue from './pages/Dashboard/SubmissionsQueue'
+import SubmissionDetail from './pages/Dashboard/SubmissionDetail'
 import Navbar from './components/Navbar'
 import NewVisit from './pages/Dashboard/NewVisit'
 import NewOutreach from './pages/Dashboard/NewOutreach'
@@ -31,6 +34,8 @@ function ShellRoutes() {
             <Route path="/properties/:accountNumber" element={<RequireAuth><PropertyDetail /></RequireAuth>} />
             <Route path="/visits/new" element={<RequireAuth><NewVisit /></RequireAuth>} />
             <Route path="/outreach/new" element={<RequireAuth><NewOutreach /></RequireAuth>} />
+            <Route path="/submissions" element={<RequireAuth><SubmissionsQueue /></RequireAuth>} />
+            <Route path="/submissions/:id" element={<RequireAuth><SubmissionDetail /></RequireAuth>} />
           </Routes>
         </motion.div>
       </AnimatePresence>
@@ -47,6 +52,7 @@ function App() {
           <Route path="/submit" element={<SubmitForm />} />
           <Route path="/*" element={<ShellRoutes />} />
         </Routes>
+        <Toaster position="bottom-right" />
       </BrowserRouter>
     </MotionConfig>
   )

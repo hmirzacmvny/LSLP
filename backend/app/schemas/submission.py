@@ -18,6 +18,7 @@ class SubmissionResponse(BaseModel):
 
     id: int
     account_number: str
+    address: Optional[str] = None
     submitter_name: str
     contact_info: str
     year_constructed: Optional[str] = None
@@ -33,3 +34,11 @@ class SubmissionResponse(BaseModel):
 class SubmissionReview(BaseModel):
     review_status: str
     reviewed_by: str
+    verified_material: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class SubmissionCounts(BaseModel):
+    pending: int
+    approved: int
+    rejected: int

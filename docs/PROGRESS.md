@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.5 ✅, review queue next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.6 ✅, wrap-up next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -86,6 +86,8 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `visit.py` | `Visit` | ✅ Complete | `access_granted` is `String` not `Boolean` |
 | `outreach.py` | `OutreachLog` | ✅ Complete | Imported as `Outreach` in API via alias |
 | `user.py` | `User` | ✅ Complete | Maps to `users` table; added Phase 2.1 |
+| `submission.py` | `CustomerSubmission` | ✅ Complete | Maps to `customer_submissions` table; added Phase 2.5 |
+| `audit_log.py` | `AuditLog` | ✅ Complete | Maps to `audit_log` table; added Phase 2.6 |
 
 ### `app/schemas/` — Pydantic schemas
 | File | Schemas | Status | Notes |
@@ -93,6 +95,7 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `property.py` | `PropertyBase`, `PropertyUpdate`, `PropertyResponse` | ✅ Complete | |
 | `visit.py` | `VisitBase`, `VisitCreate`, `VisitResponse` | ✅ Complete | `model_config = {"from_attributes": True}` on `VisitBase` |
 | `outreach.py` | `OutreachCreate`, `OutreachResponse` | ✅ Complete | `attempt_number` removed from `OutreachCreate` — calculated server-side |
+| `submission.py` | `SubmissionCreate`, `SubmissionResponse`, `SubmissionReview`, `SubmissionCounts` | ✅ Complete | `SubmissionResponse` includes `address` (joined from properties); `SubmissionReview` accepts optional `verified_material` and `notes` |
 
 ### `app/api/` — Route handlers
 | File | Endpoints | Auth | Status |
@@ -100,6 +103,7 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth; PATCH: office_staff+ | ✅ Complete |
 | `visits.py` | `GET /`, `GET /{id}`, `POST /` | all: any auth | ✅ Complete |
 | `outreach.py` | `GET /`, `GET /{id}`, `POST /` | GET: any auth; POST: office_staff+ | ✅ Complete |
+| `submissions.py` | `GET /property-search`, `POST /`, `GET /counts`, `GET /`, `GET /{id}`, `PATCH /{id}/review` | Portal: API key; Internal: office_staff+ | ✅ Updated Phase 2.6 |
 
 ### `app/services/`
 | File | Purpose | Status |
@@ -381,6 +385,42 @@ Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_
 - `src/pages/Portal/SubmitForm.jsx` — canvas-surface bg, survey grid on portal header, PageReveal on stepper/card
 - `docs/CLAUDE.md` — added "Visual system" section (§8)
 
+### Phase 2.6 — Customer Submission Review Queue
+
+**New backend files:**
+
+| File | Purpose | Status |
+|---|---|---|
+| `app/models/audit_log.py` | SQLAlchemy model for `audit_log` table | ✅ New |
+| `app/schemas/submission.py` | Added `SubmissionCounts`, `verified_material`/`notes` to `SubmissionReview`, `address` to `SubmissionResponse` | ✅ Updated |
+| `app/api/submissions.py` | Added `GET /counts`, extended `PATCH /{id}/review` with material verification + audit logging, added pagination, address joining | ✅ Updated |
+| `alembic/env.py` | Imported `AuditLog` and `CustomerSubmission` models | ✅ Updated |
+
+**New/updated submission API endpoints:**
+
+| Endpoint | Auth | Purpose |
+|---|---|---|
+| `GET /api/submissions/counts` | Firebase JWT + office_staff+ | Returns `{pending, approved, rejected}` for badge counts |
+| `GET /api/submissions/?review_status=&skip=&limit=` | Firebase JWT + office_staff+ | Paginated list with optional status filter |
+| `PATCH /api/submissions/{id}/review` | Firebase JWT + office_staff+ | Extended: accepts `verified_material` (Lead/Copper/Galvanized/Unknown); on approval with material, updates property `verified_status` and writes `audit_log` entry |
+
+**Approval flow:**
+- Reviewer selects material from photos → `verified_material` sent with review
+- Property's `verified_status` updated to `Verified-Lead` / `Verified-Copper` / `Verified-Galvanized` / `Unknown`
+- `audit_log` entry created: `table=properties`, `field=verified_status`, `old_value → new_value`, `changed_by` includes reviewer name and submission ID
+- Rejection only updates the submission; property record is never touched
+
+**New frontend files:**
+
+| File | Purpose | Status |
+|---|---|---|
+| `src/pages/Dashboard/SubmissionsQueue.jsx` | Review queue with Pending/Approved/Rejected filter tabs, counts, pagination | ✅ New |
+| `src/pages/Dashboard/SubmissionDetail.jsx` | Photo lightbox with keyboard nav, customer info vs. property record side-by-side, approve/reject dialogs | ✅ New |
+| `src/App.jsx` | Added `/submissions` and `/submissions/:id` routes inside RequireAuth; added `<Toaster>` for sonner | ✅ Updated |
+| `src/components/Navbar.jsx` | Added "Submissions" nav item with amber pending count badge | ✅ Updated |
+| `src/components/ui/sonner.jsx` | Removed `next-themes` dependency (not a Next.js project) | ✅ Fixed |
+| `src/lib/api.js` | Added `getSubmissions`, `getSubmission`, `getSubmissionCounts`, `reviewSubmission` wrappers | ✅ Updated |
+
 ---
 
 ## External Services Configured
@@ -404,10 +444,12 @@ A staff user can today, from the web dashboard:
 4. Log a new field visit (with optional photos uploaded to local storage)
 5. Log a new outreach attempt (with automatic attempt-number sequencing)
 6. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
+7. **Review customer submissions** — view pending submissions, inspect photos in a lightbox, approve with material classification (updates property record + audit log), or reject with optional reason
+8. **Navbar shows pending submission count** — amber badge on the Submissions nav item
 
 Role enforcement is active:
 - `field_crew` — can read everything, POST visits
-- `office_staff` / `supervisor` / `admin` — all of the above + PATCH properties + POST outreach
+- `office_staff` / `supervisor` / `admin` — all of the above + PATCH properties + POST outreach + review submissions
 
 ---
 
@@ -417,8 +459,8 @@ Role enforcement is active:
 - ✅ **Offline mode.** Phase 2.3 complete. `pendingVisits` stored in IndexedDB; sync fires on reconnect; Navbar badge shows pending count.
 - ✅ **Field-optimized form.** Phase 2.4 complete. `/field` route, 2-step form, GPS capture, camera, offline-aware. Run `ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;` in pgAdmin.
 - ✅ **Customer portal.** Phase 2.5 complete. `/submit` public 3-step form; portal API key auth; submissions stored in `customer_submissions`.
-- 🔲 **No customer submission review queue.** Phase 2.6.
-- 🔲 **No audit log triggers.** The `audit_log` table exists but nothing writes to it yet.
+- ✅ **Customer submission review queue.** Phase 2.6 complete. Approve/reject workflow with material classification, property updates, and audit logging.
+- 🔲 **No audit log triggers.** The `audit_log` table exists and is written to by submission reviews, but no PostgreSQL triggers for automatic change tracking yet.
 - 🔲 **No Springbrook sync, no Brightly auto-WO, no ArcGIS export endpoint.** All Phase 3.
 - 🔲 **No Metabase.** Phase 3.
 - 🔲 **No tests.** Phase 3 nice-to-have.
@@ -430,4 +472,4 @@ Role enforcement is active:
 
 - ✅ Git initialized at `C:\lslp\`. Branch: `main`.
 - `.gitignore` covers `venv/`, `node_modules/`, `.env`, `.env.local`, `uploads/`, `__pycache__/`.
-- All work through Phase 2.5 + UI redesign committed to `main`.
+- All work through Phase 2.6 + UI redesign committed to `main`.
