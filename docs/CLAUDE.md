@@ -151,7 +151,7 @@ work_order_id, created_at
 ```
 
 ### `outreach_log` (9,485 rows)
-One row per attempt. **Converted from wide format (4 columns) to long format (1 row per attempt).** Never reintroduce the wide format. `attempt_number` is auto-calculated on POST — never accepted from client.
+One row per attempt. **Converted from wide format (4 columns) to long format (1 row per attempt).** Never reintroduce the wide format. `attempt_number` is auto-calculated on POST — never accepted from client. **Type mismatch warning:** `outreach_date` is DATE while `visits.visited_at` is TIMESTAMP WITH TIME ZONE. Anywhere visits and outreach are merged or sorted together, promote the DATE to a timezone-aware datetime first (midnight UTC) — Python's `datetime` and `date` types are not comparable.
 ```
 id (PK SERIAL), account_number (FK), attempt_number (server-set),
 outreach_date (DATE not DATETIME), method, outcome, initials, notes,
@@ -266,6 +266,9 @@ The survey grid spacing (48px) was chosen because it references engineering grap
 - ✅ When stuck, ask before guessing — wrong guesses cost more time than asking
 - ✅ When the schema changes, update `PROGRESS.md` and `ROADMAP.md`
 - ✅ When adding a new protected endpoint, apply `Depends(verify_firebase_token)` for any-auth or `Depends(require_role([...]))` for role-restricted access
+
+**Dashboard metrics:**
+Every number on the Overview dashboard must be clickable and must route to a filtered list whose row count matches the number on the card. If a dashboard aggregate query changes, the corresponding filter on `GET /api/properties/` must use identical logic so the counts always agree. The in-app dashboard does not replace the planned Phase 3.6 Metabase work.
 
 **Git identity:**
 Git commits are authored under the repository owner's identity, which is configured globally on the machine. Never run `git config user.name` or `git config user.email`, and never pass `--author` to a commit — leave git identity alone entirely.

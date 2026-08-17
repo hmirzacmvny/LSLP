@@ -24,11 +24,12 @@ import {
   SheetClose,
 } from '@/components/ui/sheet'
 import {
-  Menu, LogOut, RefreshCw, Home, ClipboardPen, Megaphone, Smartphone, Inbox,
+  Menu, LogOut, RefreshCw, LayoutDashboard, Home, ClipboardPen, Megaphone, Smartphone, Inbox,
 } from 'lucide-react'
 
 const navLinks = [
-  { label: 'Properties', path: '/', icon: Home },
+  { label: 'Overview', path: '/', icon: LayoutDashboard },
+  { label: 'Properties', path: '/properties', icon: Home },
   { label: 'Submissions', path: '/submissions', icon: Inbox },
   { label: 'Log Visit', path: '/visits/new', icon: ClipboardPen },
   { label: 'Outreach', path: '/outreach/new', icon: Megaphone },

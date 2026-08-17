@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.7 are complete. **Next: Phase 2.8 — Phase 2 Wrap-Up.**
+Phases 2.1–2.8 are complete. **Next: Phase 2.9 — Phase 2 Wrap-Up.**
 
 **Pending action:** Run these in pgAdmin if not done yet:
 ```sql
@@ -107,7 +107,18 @@ Pre-phase hygiene tasks — all complete:
 - [x] `docs/ADDING_USERS.md` — procedure for provisioning field crew accounts
 - [x] Updated `CLAUDE.md` — visit attribution rules, server-enforced fields, schema updates
 
-### 2.8 Phase 2 Wrap-Up
+### 2.8 Office Staff Overview Dashboard ✅ COMPLETE (2026-08-17)
+- [x] `GET /api/dashboard/summary` — single aggregate endpoint (classification breakdown, pending submissions, field activity 7/14-day, stalled outreach, never-touched, recent activity feed)
+- [x] `Overview.jsx` — landing page at `/` with actionable metric cards, classification progress bar, activity feed, field trend
+- [x] Every number is clickable → routes to the filtered records it represents
+- [x] Properties list moved to `/properties`, accepts `?verified_status=`, `?stalled=true`, `?untouched=true` query params
+- [x] Dismissible filter chips on properties list when URL filters are active
+- [x] Navbar updated: Overview (first) → Properties → Submissions → ...
+- [x] Dashboard endpoint restricted to office_staff/supervisor/admin; field_crew cannot access
+- [x] Page reveal follows existing orchestrated-entrance pattern
+- [x] **Note:** This in-app dashboard does NOT replace the planned Phase 3.6 Metabase work — Metabase is for stakeholder dashboards and cross-program reporting
+
+### 2.9 Phase 2 Wrap-Up
 - [ ] Run a full end-to-end test: customer submits → office reviews → field crew visits → all data persists
 - [ ] Commit Phase 2 to git
 

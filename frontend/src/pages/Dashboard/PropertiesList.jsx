@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { getProperties } from '../../lib/api'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { getMaterial, getStatus, typeScale } from '../../lib/design-system'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
 import { Input } from '@/components/ui/input'
@@ -14,9 +14,16 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select'
-import { Search, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, AlertCircle, ChevronLeft, ChevronRight, X } from 'lucide-react'
+
+const FILTER_LABELS = {
+  verified_status: (v) => `Status: ${v}`,
+  stalled: () => 'Stalled outreach (4+ attempts, unresolved)',
+  untouched: () => 'Never touched (no visits or outreach)',
+}
 
 export default function PropertiesList() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [results, setResults] = useState([])
   const [loading, setLoading] = useState(false)
@@ -121,6 +128,41 @@ export default function PropertiesList() {
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
+  useEffect(() => {
+    const params = {}
+    const vs = searchParams.get('verified_status')
+    const st = searchParams.get('stalled')
+    const ut = searchParams.get('untouched')
+    if (vs) params.verified_status = vs
+    if (st) params.stalled = st
+    if (ut) params.untouched = ut
+    if (Object.keys(params).length > 0) {
+      setLoading(true)
+      setSearched(true)
+      setPage(1)
+      getProperties({ ...params, limit: 10000 })
+        .then((res) => setResults(res.data))
+        .catch(() => setError('Failed to load properties.'))
+        .finally(() => setLoading(false))
+    }
+  }, [searchParams])
+
+  const activeFilters = []
+  for (const key of ['verified_status', 'stalled', 'untouched']) {
+    const val = searchParams.get(key)
+    if (val) activeFilters.push({ key, value: val })
+  }
+
+  const removeFilter = (key) => {
+    const next = new URLSearchParams(searchParams)
+    next.delete(key)
+    setSearchParams(next)
+    if ([...next.keys()].length === 0) {
+      setResults([])
+      setSearched(false)
+    }
+  }
+
   const totalResults = results.length
   const totalPages = Math.max(1, Math.ceil(totalResults / perPage))
   const startIdx = (page - 1) * perPage
@@ -204,6 +246,35 @@ export default function PropertiesList() {
           </Button>
         </div>
       </RevealItem>
+
+      {activeFilters.length > 0 && (
+        <RevealItem className="mb-4">
+          <div className="flex flex-wrap gap-2">
+            {activeFilters.map((f) => (
+              <span
+                key={f.key}
+                className="inline-flex items-center gap-1.5 px-3 py-1 text-sm bg-[#1A56A0]/10 text-[#1A56A0] rounded-full"
+              >
+                {FILTER_LABELS[f.key] ? FILTER_LABELS[f.key](f.value) : `${f.key}: ${f.value}`}
+                <button
+                  onClick={() => removeFilter(f.key)}
+                  className="hover:bg-[#1A56A0]/20 rounded-full p-0.5"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            ))}
+            {activeFilters.length > 1 && (
+              <button
+                onClick={() => { setSearchParams({}); setResults([]); setSearched(false) }}
+                className="text-xs text-muted-foreground hover:underline px-2 py-1"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        </RevealItem>
+      )}
 
       <RevealItem>
         {error && (

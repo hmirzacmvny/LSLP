@@ -63,4 +63,8 @@ export const getSubmissionCounts = () =>
 export const reviewSubmission = (id, data) =>
   api.patch(`/api/submissions/${id}/review`, data)
 
+// DASHBOARD
+export const getDashboardSummary = () =>
+  api.get('/api/dashboard/summary')
+
 export default api

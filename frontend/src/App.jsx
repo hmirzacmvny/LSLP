@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom'
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion'
 import { Toaster } from '@/components/ui/sonner'
+import Overview from './pages/Dashboard/Overview'
 import PropertiesList from './pages/Dashboard/PropertiesList'
 import PropertyDetail from './pages/Dashboard/PropertyDetail'
 import SubmissionsQueue from './pages/Dashboard/SubmissionsQueue'
@@ -30,7 +31,8 @@ function ShellRoutes() {
         >
           <Routes location={location}>
             <Route path="/field" element={<RequireAuth><FieldVisitForm /></RequireAuth>} />
-            <Route path="/" element={<RequireAuth><PropertiesList /></RequireAuth>} />
+            <Route path="/" element={<RequireAuth><Overview /></RequireAuth>} />
+            <Route path="/properties" element={<RequireAuth><PropertiesList /></RequireAuth>} />
             <Route path="/properties/:accountNumber" element={<RequireAuth><PropertyDetail /></RequireAuth>} />
             <Route path="/visits/new" element={<RequireAuth><NewVisit /></RequireAuth>} />
             <Route path="/outreach/new" element={<RequireAuth><NewOutreach /></RequireAuth>} />

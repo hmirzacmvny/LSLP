@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.7 ✅, wrap-up next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.7 ✅, dashboard built, wrap-up next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -100,7 +100,8 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 ### `app/api/` — Route handlers
 | File | Endpoints | Auth | Status |
 |---|---|---|---|
-| `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth; PATCH: office_staff+ | ✅ Complete |
+| `dashboard.py` | `GET /summary` | office_staff/supervisor/admin | ✅ New |
+| `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth (supports `stalled`, `untouched` filters); PATCH: office_staff+ | ✅ Updated |
 | `visits.py` | `GET /`, `GET /{id}`, `POST /` | all: any auth; POST sets `initials`+`created_by_uid` from user profile | ✅ Updated Phase 2.7 |
 | `outreach.py` | `GET /`, `GET /{id}`, `POST /` | GET: any auth; POST: office_staff+ | ✅ Complete |
 | `submissions.py` | `GET /property-search`, `POST /`, `GET /counts`, `GET /`, `GET /{id}`, `PATCH /{id}/review` | Portal: API key; Internal: office_staff+ | ✅ Updated Phase 2.6 |
@@ -162,13 +163,13 @@ lucide-react, @fontsource-variable/inter, tw-animate-css
 | `postcss.config.js` | Configures `@tailwindcss/postcss` and `autoprefixer` | ✅ Complete |
 | `src/index.css` | Single line: `@import "tailwindcss";` | ✅ Complete |
 | `src/main.jsx` | React root render + calls `initSync()` on app load | ✅ Updated Phase 2.3 |
-| `src/App.jsx` | Router setup — `/login` public, all other routes wrapped in `<RequireAuth>` | ✅ Updated Phase 2.1 |
+| `src/App.jsx` | Router setup — `/login` public, `/` is Overview, `/properties` is search, all dashboard routes in `<RequireAuth>` | ✅ Updated |
 | `.env.local` | Firebase web SDK keys (`VITE_*`) — NOT committed | ✅ Created |
 
 ### `src/lib/`
 | File | Purpose | Status |
 |---|---|---|
-| `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor | ✅ Updated Phase 2.1 |
+| `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor + `getDashboardSummary` | ✅ Updated |
 | `firebase.js` | Firebase app init from `VITE_*` env vars, exports `auth` | ✅ New Phase 2.1 |
 | `design.js` | Legacy design tokens (deprecated — use `design-system.js`) | ✅ Superseded |
 | `design-system.js` | Civic Modern design system: colors, materialConfig, statusConfig, getMaterial/getStatus helpers, typeScale, layout tokens | ✅ New (Civic Modern) |
@@ -184,7 +185,8 @@ lucide-react, @fontsource-variable/inter, tw-animate-css
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
 |---|---|---|
-| `PropertiesList.jsx` | Search with shadcn Input/Table/Badge/Skeleton, design tokens for status/material colors | ✅ Redesigned (shadcn) |
+| `Overview.jsx` | Office staff landing page — actionable metrics, classification progress bar, activity feed, field trend | ✅ New |
+| `PropertiesList.jsx` | Search with shadcn Input/Table/Badge/Skeleton, design tokens, URL filter params (`verified_status`, `stalled`, `untouched`) with dismissible chips | ✅ Updated |
 | `PropertyDetail.jsx` | Card with blue accent border, 2x2 material grid with color-coded borders, shadcn Tabs/Table/Badge/Skeleton | ✅ Redesigned (shadcn) |
 | `NewVisit.jsx` | shadcn Card form, tap-button selectors for Access/Outcome, dashed photo upload area, validation + offline | ✅ Redesigned (shadcn) |
 | `NewOutreach.jsx` | shadcn Card form, customer-initiated section in nested Card, character counters, validation | ✅ Redesigned (shadcn) |
@@ -439,13 +441,14 @@ Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_
 A staff user can today, from the web dashboard:
 
 1. **Sign in** with email/password via Firebase Auth — unauthenticated users are redirected to `/login`
-2. Search the full 10,475-property list by address or account number
-3. Click into any property and see its full classification, history of visits, and history of outreach
-4. Log a new field visit (with optional photos uploaded to local storage)
-5. Log a new outreach attempt (with automatic attempt-number sequencing)
-6. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
-7. **Review customer submissions** — view pending submissions, inspect photos in a lightbox, approve with material classification (updates property record + audit log), or reject with optional reason
-8. **Navbar shows pending submission count** — amber badge on the Submissions nav item
+2. **See the Overview dashboard** (`/`) — actionable metric cards (pending submissions, stalled outreach, untouched properties), classification progress bar, recent activity feed, field activity trend. Every number is clickable and routes to the filtered records it represents.
+3. Search the full 10,475-property list by address or account number (now at `/properties`)
+4. Click into any property and see its full classification, history of visits, and history of outreach
+5. Log a new field visit (with optional photos uploaded to local storage)
+6. Log a new outreach attempt (with automatic attempt-number sequencing)
+7. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
+8. **Review customer submissions** — view pending submissions, inspect photos in a lightbox, approve with material classification (updates property record + audit log), or reject with optional reason
+9. **Navbar shows pending submission count** — amber badge on the Submissions nav item
 
 Role enforcement is active:
 - `field_crew` — can read everything, POST visits (attribution from their account profile)
