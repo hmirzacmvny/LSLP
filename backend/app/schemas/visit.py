@@ -24,3 +24,5 @@ class VisitResponse(VisitBase):
     created_at: Optional[datetime] = None
     created_by_uid: Optional[str] = None
     created_by_email: Optional[str] = None
+    entered_by_uid: Optional[str] = None
+    entered_by_email: Optional[str] = None

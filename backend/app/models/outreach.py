@@ -15,4 +15,5 @@ class OutreachLog(Base):
     notes = Column(Text)
     is_customer_initiated = Column(Boolean, default=False)
     customer_initiated_notes = Column(Text)
+    created_by_uid = Column(String(128))
     created_at = Column(DateTime(timezone=True), server_default=func.now())

@@ -8,7 +8,7 @@ Snapshot of what's built, file by file.
 
 ```
 Phase 1 — Foundation              ✅ COMPLETE
-Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.7 ✅, dashboard built, wrap-up next)
+Phase 2 — PWA + Customer Portal   🔨 IN PROGRESS (2.1–2.8 ✅, TIMESTAMPTZ done, wrap-up next)
 Phase 3 — Automation              ⏳ NOT STARTED
 Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 ```
@@ -54,6 +54,17 @@ Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 - **For any schema change:** run `alembic revision --autogenerate -m "description"` then `alembic upgrade head`.
 - When adding new models, also import them in `alembic/env.py`.
 
+### TIMESTAMPTZ Migration (2026-08-17)
+7 of 10 timestamp columns migrated from `TIMESTAMP WITHOUT TIME ZONE` to `TIMESTAMPTZ`:
+- ✅ `visits.visited_at`, `visits.created_at`
+- ✅ `outreach_log.created_at`
+- ✅ `customer_submissions.submitted_at`, `customer_submissions.reviewed_at`
+- ✅ `audit_log.changed_at`
+- ✅ `users.created_at`
+- 🔲 `properties.created_at`, `properties.updated_at`, `properties.springbrook_synced_at` — pending
+
+Historical naive timestamps were stored as Eastern local time; PostgreSQL converted them correctly on migration (server timezone is `America/New_York`).
+
 ---
 
 ## Backend — `C:\lslp\backend\`
@@ -94,17 +105,20 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 |---|---|---|---|
 | `property.py` | `PropertyBase`, `PropertyUpdate`, `PropertyResponse` | ✅ Complete | |
 | `visit.py` | `VisitBase`, `VisitCreate`, `VisitResponse` | ✅ Complete | `model_config = {"from_attributes": True}` on `VisitBase` |
-| `outreach.py` | `OutreachCreate`, `OutreachResponse` | ✅ Complete | `attempt_number` removed from `OutreachCreate` — calculated server-side |
-| `submission.py` | `SubmissionCreate`, `SubmissionResponse`, `SubmissionReview`, `SubmissionCounts` | ✅ Complete | `SubmissionResponse` includes `address` (joined from properties); `SubmissionReview` accepts optional `verified_material` and `notes` |
+| `outreach.py` | `OutreachCreate`, `OutreachResponse` | ✅ Updated | `initials` removed from Create (set server-side); `created_by_uid`/`created_by_email` added to Response |
+| `submission.py` | `SubmissionCreate`, `SubmissionResponse`, `SubmissionReview`, `SubmissionCounts` | ✅ Updated | `reviewed_by` removed from `SubmissionReview` (set server-side); `reviewed_by_name` added to Response |
 
 ### `app/api/` — Route handlers
 | File | Endpoints | Auth | Status |
 |---|---|---|---|
+| `analytics.py` | `GET /` | office_staff/supervisor/admin | ✅ New — all chart datasets in one response, uniform filter application |
+| `auth.py` (routes) | `GET /me` | any auth | ✅ New (Phase 2.7b) |
+| `users.py` | `GET /me/activity` | any auth | ✅ New — paginated activity trail for the authenticated user |
 | `dashboard.py` | `GET /summary` | office_staff/supervisor/admin | ✅ New |
-| `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth (supports `stalled`, `untouched` filters); PATCH: office_staff+ | ✅ Updated |
-| `visits.py` | `GET /`, `GET /{id}`, `POST /` | all: any auth; POST sets `initials`+`created_by_uid` from user profile | ✅ Updated Phase 2.7 |
-| `outreach.py` | `GET /`, `GET /{id}`, `POST /` | GET: any auth; POST: office_staff+ | ✅ Complete |
-| `submissions.py` | `GET /property-search`, `POST /`, `GET /counts`, `GET /`, `GET /{id}`, `PATCH /{id}/review` | Portal: API key; Internal: office_staff+ | ✅ Updated Phase 2.6 |
+| `properties.py` | `GET /`, `GET /{id}`, `PATCH /{id}` | GET: any auth; PATCH: office_staff+ (writes audit_log per field change) | ✅ Updated |
+| `visits.py` | `GET /`, `GET /{id}`, `GET /field-users`, `POST /` | GET: office_staff+; field-users: office_staff+; POST: any auth (sets `created_by_uid` from performer, `entered_by_uid` from authenticated user) | ✅ Updated |
+| `outreach.py` | `GET /`, `GET /{id}`, `POST /` | all: office_staff+; POST sets `initials`+`created_by_uid` from user profile | ✅ Updated |
+| `submissions.py` | `GET /property-search`, `POST /`, `GET /counts`, `GET /`, `GET /{id}`, `PATCH /{id}/review` | Portal: API key; Internal: office_staff+ (review sets `reviewed_by` from authenticated user) | ✅ Updated |
 
 ### `app/services/`
 | File | Purpose | Status |
@@ -118,6 +132,9 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 | `alembic.ini` | Config — DB URL sourced from `.env` at runtime | ✅ Configured |
 | `alembic/env.py` | Loads `.env`, imports all models, sets `target_metadata` | ✅ Configured |
 | `alembic/versions/6069791d1b62_baseline.py` | Empty baseline — DB stamped here, no ops | ✅ Committed |
+
+### Bugs fixed during performer/enterer implementation
+10. **FastAPI route ordering** — `GET /api/visits/field-users` was registered after `GET /api/visits/{visit_id}`, causing FastAPI to try parsing "field-users" as an integer → 422. Fixed by moving `/field-users` before `/{visit_id}` in `visits.py`.
 
 ### Bugs fixed during Phase 2.3
 7. **CORS preflight 400 on offline sync POST** — `main.py` only allowed `http://localhost:5173`. The browser sent the sync POST from `http://127.0.0.1:5173` (a different origin). Fixed by adding `http://127.0.0.1:5173` to `allow_origins`. Auth token is correctly attached by the shared Axios interceptor — no changes needed in `sync.js`.
@@ -153,7 +170,8 @@ axios, react-router-dom, @tanstack/react-query,
 tailwindcss, @tailwindcss/postcss, autoprefixer, postcss,
 firebase, vite-plugin-pwa, dexie,
 radix-ui, class-variance-authority, clsx, tailwind-merge,
-lucide-react, @fontsource-variable/inter, tw-animate-css
+lucide-react, @fontsource-variable/inter, tw-animate-css,
+recharts
 ```
 
 ### Top-level
@@ -163,24 +181,25 @@ lucide-react, @fontsource-variable/inter, tw-animate-css
 | `postcss.config.js` | Configures `@tailwindcss/postcss` and `autoprefixer` | ✅ Complete |
 | `src/index.css` | Single line: `@import "tailwindcss";` | ✅ Complete |
 | `src/main.jsx` | React root render + calls `initSync()` on app load | ✅ Updated Phase 2.3 |
-| `src/App.jsx` | Router setup — `/login` public, `/` is Overview, `/properties` is search, all dashboard routes in `<RequireAuth>` | ✅ Updated |
+| `src/App.jsx` | Router setup — `/login` public, `/` is Overview, `/properties` is search, all dashboard routes in `<RequireAuth allowedRoles>`, `UserProvider` wraps app | ✅ Updated Phase 2.7b |
 | `.env.local` | Firebase web SDK keys (`VITE_*`) — NOT committed | ✅ Created |
 
 ### `src/lib/`
 | File | Purpose | Status |
 |---|---|---|
-| `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor + `getDashboardSummary` | ✅ Updated |
+| `api.js` | Axios instance + endpoint wrappers + Bearer token interceptor + `getDashboardSummary` + `getCurrentUser` + `getUserActivity` | ✅ Updated |
 | `firebase.js` | Firebase app init from `VITE_*` env vars, exports `auth` | ✅ New Phase 2.1 |
+| `UserContext.jsx` | React context providing `firebaseUser`, `role`, `profile`, `loading` — fetches `/api/auth/me` once on login | ✅ New Phase 2.7b |
 | `design.js` | Legacy design tokens (deprecated — use `design-system.js`) | ✅ Superseded |
-| `design-system.js` | Civic Modern design system: colors, materialConfig, statusConfig, getMaterial/getStatus helpers, typeScale, layout tokens | ✅ New (Civic Modern) |
+| `design-system.js` | Civic Modern design system: colors, materialConfig, statusConfig, roleConfig, getMaterial/getStatus/getRoleDisplay helpers, typeScale, layout tokens | ✅ Updated |
 | `utils.js` | shadcn `cn()` helper (clsx + tailwind-merge) | ✅ New (shadcn init) |
 
 ### `src/components/`
 | File | Purpose | Status |
 |---|---|---|
-| `Navbar.jsx` | Top nav bar (#1A56A0 bg, MV seal, user dropdown, mobile hamburger via Sheet), sync indicator badges | ✅ Redesigned (shadcn) |
-| `RequireAuth.jsx` | Auth gate — loading state during Firebase init, redirect to `/login` if unauthed | ✅ New Phase 2.1 |
-| `ui/*.jsx` | 19 shadcn/ui components: button, input, input-group, label, select, textarea, card, badge, table, tabs, separator, avatar, dropdown-menu, alert, skeleton, dialog, sheet, sonner, command, popover | ✅ Installed |
+| `Navbar.jsx` | Top nav bar, role-filtered nav items, rebuilt user menu (avatar, name, email, role badge, Account link, Sign out) | ✅ Updated |
+| `RequireAuth.jsx` | Auth gate + role gate — explicit role-based home redirects, error state for failed role fetch | ✅ Updated |
+| `ui/*.jsx` | 20 shadcn/ui components: button, input, input-group, label, select, textarea, card, badge, table, tabs, separator, avatar, dropdown-menu, alert, skeleton, dialog, sheet, sonner, command, popover, chart | ✅ Installed |
 
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
@@ -188,13 +207,15 @@ lucide-react, @fontsource-variable/inter, tw-animate-css
 | `Overview.jsx` | Office staff landing page — actionable metrics, classification progress bar, activity feed, field trend | ✅ New |
 | `PropertiesList.jsx` | Search with shadcn Input/Table/Badge/Skeleton, design tokens, URL filter params (`verified_status`, `stalled`, `untouched`) with dismissible chips | ✅ Updated |
 | `PropertyDetail.jsx` | Card with blue accent border, 2x2 material grid with color-coded borders, shadcn Tabs/Table/Badge/Skeleton | ✅ Redesigned (shadcn) |
+| `Analytics.jsx` | Compliance analytics page — classification headline, material pairings heatmap, distribution bars, verification/outreach time series, CSV export, deferred metrics placeholder | ✅ New |
 | `NewVisit.jsx` | shadcn Card form, tap-button selectors for Access/Outcome, dashed photo upload area, validation + offline | ✅ Redesigned (shadcn) |
-| `NewOutreach.jsx` | shadcn Card form, customer-initiated section in nested Card, character counters, validation | ✅ Redesigned (shadcn) |
+| `NewOutreach.jsx` | shadcn Card form, read-only identity card (replaces initials input), customer-initiated section, validation | ✅ Updated |
 
 ### `src/pages/`
 | File | Purpose | Status |
 |---|---|---|
-| `Login.jsx` | Dark blue gradient bg, centered Card with MV seal, shadcn Input/Label/Button/Alert | ✅ Redesigned (shadcn) |
+| `Login.jsx` | Centered Card with MV seal; explicit post-login destination by role (field_crew → /field, others → /) | ✅ Updated |
+| `Account.jsx` | Account page — identity block, contribution counts, paginated activity trail | ✅ New |
 
 ### Phase 2.2 — PWA Setup
 
@@ -449,15 +470,55 @@ A staff user can today, from the web dashboard:
 7. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
 8. **Review customer submissions** — view pending submissions, inspect photos in a lightbox, approve with material classification (updates property record + audit log), or reject with optional reason
 9. **Navbar shows pending submission count** — amber badge on the Submissions nav item
+10. **View compliance analytics** (`/analytics`) — classification progress headline, material pairings heatmap (public × private side), material distribution bars, verification over time, outreach outcomes over time (stacked area), outreach reach (distinct properties vs total attempts). Filters: date range, material, verification status, outreach outcome — applied uniformly across all datasets. CSV export of current filtered data. Deferred: replacement tracking and priority filter (see `docs/ANALYTICS_GAPS.md`).
 
 Role enforcement is active:
-- `field_crew` — can read everything, POST visits (attribution from their account profile)
-- `office_staff` / `supervisor` / `admin` — all of the above + PATCH properties + POST outreach + review submissions
+- `field_crew` — can access `/field` and `/account` only; can POST visits and search properties. Navbar shows only "Field App."
+- `office_staff` — full access to all office routes except `/field`. Navbar hides "Field App."
+- `supervisor` / `admin` — full access to all routes including `/field`
+- Post-login destination is explicit per role: field_crew → /field, all others → /
 
-Visit attribution (Phase 2.7):
-- Field crew log in with their account; `/field` requires authentication
-- `initials` and `created_by_uid` on visits come from the authenticated user's profile — never from client input
-- Historical visits have no `created_by_uid`; the submitting email returns null for those
+Write attribution:
+- Visits record two identities: `created_by_uid` (performer — who physically inspected) and `entered_by_uid` (enterer — who typed the record)
+- On the field form, both are set to the authenticated user automatically
+- On the office form, the logged-in user is the enterer; the performer is selected from a dropdown of active field_crew/supervisor/admin users. `initials` come from the performer's profile.
+- `GET /api/visits/field-users` — lists active inspection-capable users for the performer selector (office_staff+ only)
+- `reviewed_by` on submission reviews is set to the authenticated user's firebase_uid
+- Property PATCH writes per-field audit_log entries with the authenticated user's firebase_uid
+- Historical records have neither `created_by_uid` nor `entered_by_uid`; emails return null for those
+- Where performer and enterer differ, "Entered by [email]" is shown visibly in the visits table and activity trail — not buried in a tooltip
+
+Account page (`/account`):
+- Available to all authenticated roles
+- Shows identity block (name, email, role badge, join date) and contribution counts
+- Paginated activity trail: visits, outreach, reviews, property changes — each linked to the property
+- Only shows activity attributable to the requesting user; historical records with null `created_by_uid` never appear
+
+Role display names (single source in `design-system.js`):
+- field_crew → "Field Crew", office_staff → "Office Staff", supervisor → "Supervisor", admin → "Administrator"
+- Used in Navbar user menu, account page, anywhere a role is rendered
+
+### Fixes — Timestamp handling, field form validation, page resilience, portal validation
+
+**Fix 1: Timezone-aware timestamps**
+- All server-side timestamp writes now use `datetime.now(timezone.utc)` explicitly instead of relying on `server_default=func.now()` (which stores local time in TIMESTAMP WITHOUT TZ columns)
+- `_to_utc_datetime` helper in `dashboard.py` and `users.py` fixed: naive timestamps are treated as server-local (Eastern) and converted to UTC, rather than being incorrectly labeled as UTC
+- TIMESTAMPTZ migration applied 2026-08-17 (7/10 columns; 3 properties columns pending)
+- Files changed: `visits.py`, `outreach.py`, `properties.py`, `submissions.py`, `dashboard.py`, `users.py`
+
+**Fix 2: Field form validation**
+- `FieldVisitForm.jsx`: `access_granted` is always required; `verification_outcome` required when access was granted (Yes); at least one photo required when access was granted; GPS never blocks
+- Submit button disabled with first validation reason shown; same rules apply to offline save path
+- Validation runs on every render (reactive), not just on submit
+
+**Fix 3: PropertyDetail per-section degradation**
+- `PropertyDetail.jsx`: split `Promise.all` into three independent loads (property, visits, outreach)
+- Each section succeeds or fails independently; tab headers show `(!)` on failure; tab content shows "Could not load" message
+- Property info still gates the page (404 → "Property not found")
+
+**Fix 4: Portal validation audit + backend validation**
+- Frontend (`SubmitForm.jsx`): name requires 2+ characters; contact validated as email or phone (7+ digits); `prior_line_work` is now required (was optional); photo type/size validation (JPEG/PNG/WebP/HEIC, 10 MB max); inline per-field error messages that clear on edit
+- Backend (`submissions.py`): server-side validation mirrors frontend rules — name 2+ chars, contact format, prior_line_work required, photo type/size enforcement. Returns 422 with specific error messages. This endpoint is public (API key auth, no Firebase JWT) and takes input from the open internet.
 
 ### Phase 2.7 — Field Crew Authentication & Visit Attribution
 

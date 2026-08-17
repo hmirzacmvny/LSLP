@@ -49,6 +49,17 @@ export function getStatus(value) {
   return key ? statusConfig[key] : statusConfig.Unknown
 }
 
+export const roleConfig = {
+  field_crew:   { label: 'Field Crew',     badgeCls: 'bg-slate-100 text-slate-700 border-slate-300' },
+  office_staff: { label: 'Office Staff',   badgeCls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  supervisor:   { label: 'Supervisor',     badgeCls: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+  admin:        { label: 'Administrator',  badgeCls: 'bg-violet-50 text-violet-700 border-violet-200' },
+}
+
+export function getRoleDisplay(role) {
+  return roleConfig[role]?.label || role || 'Staff'
+}
+
 export const typeScale = {
   pageTitle: 'text-2xl font-semibold tracking-tight',
   sectionTitle: 'text-base font-semibold',

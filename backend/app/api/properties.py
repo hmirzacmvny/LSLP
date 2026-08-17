@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
@@ -6,6 +7,8 @@ from app.database import get_db
 from app.models.property import Property
 from app.models.visit import Visit
 from app.models.outreach import OutreachLog
+from app.models.audit_log import AuditLog
+from app.models.user import User
 from app.schemas.property import PropertyResponse, PropertyUpdate
 from app.services.auth import verify_firebase_token, require_role
 
@@ -71,13 +74,24 @@ def update_property(
     account_number: str,
     updates: PropertyUpdate,
     db: Session = Depends(get_db),
-    _=Depends(require_role(["office_staff", "supervisor", "admin"])),
+    user: User = Depends(require_role(["office_staff", "supervisor", "admin"])),
 ):
     prop = db.query(Property).filter(Property.account_number == account_number).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
 
     for field, value in updates.model_dump(exclude_unset=True).items():
+        old_value = getattr(prop, field)
+        if str(old_value) != str(value):
+            db.add(AuditLog(
+                table_name="properties",
+                record_id=account_number,
+                field_changed=field,
+                old_value=str(old_value) if old_value is not None else None,
+                new_value=str(value) if value is not None else None,
+                changed_by=user.firebase_uid,
+                changed_at=datetime.now(timezone.utc),
+            ))
         setattr(prop, field, value)
 
     db.commit()

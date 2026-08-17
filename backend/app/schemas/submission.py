@@ -28,12 +28,12 @@ class SubmissionResponse(BaseModel):
     submitted_at: Optional[datetime] = None
     review_status: Optional[str] = None
     reviewed_by: Optional[str] = None
+    reviewed_by_name: Optional[str] = None
     reviewed_at: Optional[datetime] = None
 
 
 class SubmissionReview(BaseModel):
     review_status: str
-    reviewed_by: str
     verified_material: Optional[str] = None
     notes: Optional[str] = None
 

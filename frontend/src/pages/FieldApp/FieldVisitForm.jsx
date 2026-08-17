@@ -179,10 +179,28 @@ export default function FieldVisitForm() {
     setOfflineSaved(false)
   }
 
+  const getValidationErrors = () => {
+    const errors = []
+    if (!form.access_granted) errors.push('Access granted is required')
+    if (form.access_granted === 'Yes' && !form.verification_outcome)
+      errors.push('Verification outcome is required when access was granted')
+    if (form.access_granted === 'Yes' && photos.length === 0)
+      errors.push('At least one photo is required when access was granted')
+    return errors
+  }
+
+  const validationErrors = step === 2 ? getValidationErrors() : []
+
   const handleSubmit = async () => {
     const accountNumber = selectedProperty?.account_number || searchQuery.trim()
     if (!accountNumber) {
       setError('Please select a property first.')
+      return
+    }
+
+    const errors = getValidationErrors()
+    if (errors.length > 0) {
+      setError(errors.join('. ') + '.')
       return
     }
 
@@ -549,14 +567,21 @@ export default function FieldVisitForm() {
           </div>
 
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg">
-            <Button
-              type="button"
-              onClick={handleSubmit}
-              disabled={loading}
-              className="w-full h-14 text-lg font-semibold max-w-xl mx-auto block bg-[#1A56A0] hover:bg-[#143F75] text-white"
-            >
-              {loading ? 'Saving...' : !navigator.onLine ? 'Save Offline' : 'Submit Visit'}
-            </Button>
+            <div className="max-w-xl mx-auto">
+              {validationErrors.length > 0 && (
+                <p className="text-xs text-muted-foreground text-center mb-2">
+                  {validationErrors[0]}
+                </p>
+              )}
+              <Button
+                type="button"
+                onClick={handleSubmit}
+                disabled={loading || validationErrors.length > 0}
+                className="w-full h-14 text-lg font-semibold block bg-[#1A56A0] hover:bg-[#143F75] text-white"
+              >
+                {loading ? 'Saving...' : !navigator.onLine ? 'Save Offline' : 'Submit Visit'}
+              </Button>
+            </div>
           </div>
         </motion.div>
       )}

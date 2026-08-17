@@ -139,10 +139,11 @@ created_at, updated_at
 ```
 
 ### `visits` (168 rows)
-One row per field inspection. **`visited_at` is set server-side — never accept it from the client.** **`initials` and `created_by_uid` come from the authenticated user's profile — never accept them from the client.**
+One row per field inspection. **`visited_at` is set server-side — never accept it from the client.** **`initials` comes from the performer's profile. `created_by_uid` is the performer; `entered_by_uid` is the person who typed the record. Never accept `entered_by_uid` from the client.**
 ```
-id (PK SERIAL), account_number (FK), initials (from user profile),
-created_by_uid (VARCHAR(128), nullable — FK to users.firebase_uid),
+id (PK SERIAL), account_number (FK), initials (from performer's profile),
+created_by_uid (VARCHAR(128), nullable — performer's firebase_uid),
+entered_by_uid (VARCHAR(128), nullable — enterer's firebase_uid),
 visited_at (server-set),
 access_granted (String, NOT Boolean — values include "Yes", "No",
 "No Answer", "Scheduled", "No (Refused)"), verification_outcome,
@@ -196,14 +197,41 @@ old_value, new_value, changed_by, changed_at
 **Auth convention:**
 - Token verification uses JWKS (`PyJWKClient` against Firebase's public key endpoint). Only `FIREBASE_PROJECT_ID` is needed in `.env`.
 - Never switch this to the Firebase Admin SDK service account key approach — org policy blocks service account key creation and this approach is confirmed working.
+- `GET /api/auth/me` returns the authenticated user's `email`, `name`, `role`, and `initials`. The frontend caches this in `UserContext` and uses it for route gating and Navbar filtering.
+
+**Role-to-route access matrix (reference for any new route):**
+
+| Route / Endpoint | field_crew | office_staff | supervisor | admin |
+|---|---|---|---|---|
+| `/field` + `POST /api/visits/` | ✅ | ✅ | ✅ | ✅ |
+| `GET /api/auth/me` | ✅ | ✅ | ✅ | ✅ |
+| `GET /api/properties/` (search/typeahead) | ✅ | ✅ | ✅ | ✅ |
+| `GET /api/properties/{id}` | ✅ | ✅ | ✅ | ✅ |
+| `/` (Overview) + `GET /api/dashboard/summary` | ❌ | ✅ | ✅ | ✅ |
+| `/properties` (list page) | ❌ | ✅ | ✅ | ✅ |
+| `/properties/:id` (detail page) | ❌ | ✅ | ✅ | ✅ |
+| `/visits/new` (office form) | ❌ | ✅ | ✅ | ✅ |
+| `GET /api/visits/` and `GET /api/visits/{id}` | ❌ | ✅ | ✅ | ✅ |
+| `/outreach/new` + all outreach endpoints | ❌ | ✅ | ✅ | ✅ |
+| `/submissions` + all internal submission endpoints | ❌ | ✅ | ✅ | ✅ |
+| `PATCH /api/properties/{id}` | ❌ | ✅ | ✅ | ✅ |
+
+Frontend restriction is convenience (redirect to `/field`); backend `require_role` is the real enforcement boundary. Both must agree for every route.
 
 **Server-side enforced fields (never trust client):**
 - `visited_at` on visits
-- `initials` on visits (set from authenticated user's profile, never from form input)
-- `created_by_uid` on visits (set from authenticated user's Firebase UID)
+- `initials` on visits (set from the performer's profile, never from form input)
+- `created_by_uid` on visits (performer — set from `performed_by_uid` if supplied and validated, otherwise the authenticated user)
+- `entered_by_uid` on visits (always the authenticated user — never accepted from the client)
 - `attempt_number` on outreach
 - `created_at`, `updated_at` everywhere
 - `verified_status` on properties (only updated via specific PATCH logic)
+
+**Visit identity model:**
+Visits record two identities: `created_by_uid` is who performed the inspection (physically at the property), `entered_by_uid` is who entered the record into the system. On the field form these are the same person. On the office form the logged-in user is the enterer and the performer is selected explicitly. Never conflate them, and never accept `entered_by_uid` from the client.
+
+**Field app access:**
+`office_staff` may enter visits on behalf of inspection staff (via `/visits/new`) but may not reach the field app (`/field`). Access restrictions are enforced server-side where a dedicated endpoint exists, and via `RequireAuth` with `allowedRoles` on frontend-only routes. Hiding a route in the navbar is not a restriction — `RequireAuth` actively redirects unauthorized roles. The field form and office form share `POST /api/visits/` because both need it; the form-level restriction on `/field` is the correct enforcement boundary.
 
 ---
 
@@ -246,7 +274,7 @@ The survey grid spacing (48px) was chosen because it references engineering grap
 - ❌ Never use `DELETE` without a `WHERE` clause in pgAdmin
 - ❌ Never edit the database schema directly in pgAdmin once Alembic is set up — use migrations
 - ❌ Never reintroduce the wide-format outreach log
-- ❌ Never accept `visited_at`, `attempt_number`, `initials` (on visits), or `created_by_uid` from the client — these are set server-side from the authenticated user
+- ❌ Never accept `visited_at`, `attempt_number`, `initials` (on visits), `created_by_uid`, or `entered_by_uid` from the client — these are set server-side from the authenticated user and/or the selected performer
 - ❌ Never use React Native — we use PWA only
 - ❌ Never suggest microservices, lambdas, or serverless rewrites
 - ❌ Never store photos as base64 in the database — they go in the storage service
@@ -272,6 +300,27 @@ Every number on the Overview dashboard must be clickable and must route to a fil
 
 **Git identity:**
 Git commits are authored under the repository owner's identity, which is configured globally on the machine. Never run `git config user.name` or `git config user.email`, and never pass `--author` to a commit — leave git identity alone entirely.
+
+**Timestamps:**
+All server-set timestamps must be written as timezone-aware UTC (`datetime.now(timezone.utc)` in Python) and serialized to the frontend as ISO 8601 with an explicit offset so the browser can localize correctly. Never rely on `server_default=func.now()` for new writes — PostgreSQL's `NOW()` returns server-local time in TIMESTAMP WITHOUT TZ columns. The `_to_utc_datetime` helpers in `dashboard.py` and `users.py` treat naive timestamps as server-local (Eastern) and convert to UTC. TIMESTAMPTZ migration is pending — once applied, naive timestamps will no longer exist.
+
+**Page resilience:**
+Page loads that fetch multiple resources must degrade per-section rather than failing wholesale. Never combine independent API calls in a single `Promise.all` where one failure would blank an entire page. Each section should load, succeed, or show an inline error independently. The property header can gate the page (404 → "Property not found") but visits and outreach must not.
+
+**Public endpoint validation:**
+Any endpoint reachable without Firebase authentication (currently `POST /api/submissions/`) must validate its input server-side regardless of client-side checks. The portal endpoint takes input from the open internet — validate name length, contact format, required fields, and photo type/size on the backend.
+
+**Write attribution:**
+All data-modifying operations must be traceable to the authenticated user. `created_by_uid` is set from the user's Firebase UID on visits and outreach; `reviewed_by` is set from the user's Firebase UID on submission reviews; property PATCH writes per-field audit_log entries. Never accept attribution fields from the client.
+
+**Role display names:**
+Role display names come from a single mapping in `design-system.js` (`roleConfig` / `getRoleDisplay`). Never hardcode role labels anywhere else.
+
+**Analytics filters:**
+`GET /api/analytics/` returns all chart datasets in one response. Every filter (date range, material, verified status, outreach outcome) applies uniformly across every dataset — never let one chart respect a filter while another ignores it. Date range restricts property-level charts to properties with activity (visit or outreach) in the range, and restricts time-series charts to the date axis. Chart colors come from `ChartConfig` objects mapped from `design-system.js` material colors, not inline hex values.
+
+**Analytics gaps:**
+Replacement tracking and property priority are deferred — neither the data nor the data sources exist today. See `docs/ANALYTICS_GAPS.md` for the specification. Do not build placeholder charts; use an explanatory card instead.
 
 ---
 

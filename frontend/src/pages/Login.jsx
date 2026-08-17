@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { signInWithEmailAndPassword } from 'firebase/auth'
 import { auth } from '../lib/firebase'
+import { useUser } from '../lib/UserContext'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -32,8 +33,14 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   const navigate = useNavigate()
-  const location = useLocation()
-  const from = location.state?.from?.pathname || '/'
+  const { firebaseUser, role, loading: userLoading } = useUser()
+
+  useEffect(() => {
+    if (!userLoading && firebaseUser && role) {
+      const home = role === 'field_crew' ? '/field' : '/'
+      navigate(home, { replace: true })
+    }
+  }, [userLoading, firebaseUser, role, navigate])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -41,10 +48,8 @@ export default function Login() {
     setLoading(true)
     try {
       await signInWithEmailAndPassword(auth, email, password)
-      navigate(from, { replace: true })
     } catch {
       setError('Invalid email or password.')
-    } finally {
       setLoading(false)
     }
   }

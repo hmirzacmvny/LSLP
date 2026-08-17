@@ -6,14 +6,21 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.8 are complete. **Next: Phase 2.9 — Phase 2 Wrap-Up.**
+Phases 2.1–2.8 are complete plus analytics page, four fixes, and performer/enterer separation. TIMESTAMPTZ migration done (7/10 columns; 3 properties columns remain). **Next: Phase 2.9 — Phase 2 Wrap-Up.**
 
-**Pending action:** Run these in pgAdmin if not done yet:
+**✅ TIMESTAMPTZ migration — DONE (7 of 10 columns):**
+Migrated 2026-08-17: `visits.visited_at`, `visits.created_at`, `outreach_log.created_at`, `customer_submissions.submitted_at`, `customer_submissions.reviewed_at`, `audit_log.changed_at`, `users.created_at`. Historical naive timestamps were correctly interpreted as server-local Eastern time and converted to UTC internally by PostgreSQL.
+
+**Pending action — 3 remaining TIMESTAMPTZ columns (properties table):**
 ```sql
-ALTER TABLE visits ADD COLUMN gps_coordinates JSONB;
-ALTER TABLE users ADD COLUMN initials VARCHAR(5);
-ALTER TABLE visits ADD COLUMN created_by_uid VARCHAR(128);
+ALTER TABLE properties ALTER COLUMN created_at TYPE TIMESTAMPTZ;
+ALTER TABLE properties ALTER COLUMN updated_at TYPE TIMESTAMPTZ;
+ALTER TABLE properties ALTER COLUMN springbrook_synced_at TYPE TIMESTAMPTZ;
 ```
+These were missed from the original list. Same low risk — server timezone is Eastern, PostgreSQL converts correctly.
+
+**✅ Schema additions — ALL DONE:**
+All previously pending ALTER TABLE statements have been run: `gps_coordinates`, `initials`, `created_by_uid` (visits + outreach_log), `entered_by_uid`.
 
 Pre-phase hygiene tasks — all complete:
 
@@ -107,6 +114,15 @@ Pre-phase hygiene tasks — all complete:
 - [x] `docs/ADDING_USERS.md` — procedure for provisioning field crew accounts
 - [x] Updated `CLAUDE.md` — visit attribution rules, server-enforced fields, schema updates
 
+### 2.7b Role-Scoped Route Access ✅ COMPLETE (2026-08-17)
+- [x] `RequireAuth` accepts `allowedRoles` prop — redirects unauthorized roles to `/field`
+- [x] `UserContext` fetches `/api/auth/me` on login — provides `role` to all components
+- [x] `GET /api/auth/me` — returns authenticated user's email, name, role, initials
+- [x] Navbar filters nav items by role — field_crew sees only "Field App"
+- [x] Backend: `GET /api/visits/`, `GET /api/visits/{id}`, `GET /api/outreach/`, `GET /api/outreach/{id}` locked to office_staff+
+- [x] Backend: `POST /api/visits/` and `GET /api/properties/` remain open to all authenticated users (field form needs them)
+- [x] Role-to-route access matrix documented in CLAUDE.md
+
 ### 2.8 Office Staff Overview Dashboard ✅ COMPLETE (2026-08-17)
 - [x] `GET /api/dashboard/summary` — single aggregate endpoint (classification breakdown, pending submissions, field activity 7/14-day, stalled outreach, never-touched, recent activity feed)
 - [x] `Overview.jsx` — landing page at `/` with actionable metric cards, classification progress bar, activity feed, field trend
@@ -117,6 +133,21 @@ Pre-phase hygiene tasks — all complete:
 - [x] Dashboard endpoint restricted to office_staff/supervisor/admin; field_crew cannot access
 - [x] Page reveal follows existing orchestrated-entrance pattern
 - [x] **Note:** This in-app dashboard does NOT replace the planned Phase 3.6 Metabase work — Metabase is for stakeholder dashboards and cross-program reporting
+
+### 2.8b Compliance Analytics ✅ COMPLETE (2026-08-17)
+- [x] `GET /api/analytics/` — single endpoint returning all chart datasets with uniform filter application
+- [x] Filters: date range, material type, verification status, outreach outcome — all applied uniformly across every dataset
+- [x] Datasets: material distribution (by side), material pairings matrix, classification summary, verification over time, outreach outcomes over time, outreach reach (distinct properties per month)
+- [x] Case-normalized material grouping (Lead/Copper/Galvanized/Unknown/Other) handles inconsistent data
+- [x] Outreach outcome grouping (Completed/No Contact/Mailing/Follow-up/Other) handles long tail
+- [x] Continuous monthly series with zero-fill for gaps
+- [x] `outreach_date` (DATE) vs `visited_at` (TIMESTAMPTZ) type mismatch handled explicitly
+- [x] `Analytics.jsx` — classification headline with progress bar, heatmap matrix, grouped bar chart, area/line charts, filter bar with dismissible chips, CSV export, skeleton loading, per-section empty states
+- [x] Material pairings built as CSS grid heatmap (not coerced recharts), Lead/Lead highlighted, neutral intensity ramp
+- [x] Deferred placeholder card for replacement tracking (referencing `docs/ANALYTICS_GAPS.md`)
+- [x] `docs/ANALYTICS_GAPS.md` — specification for replacement tracking and priority filter
+- [x] shadcn chart component (`recharts` wrapper) installed, colors from `ChartConfig` mapped from `design-system.js`
+- [x] Navbar segmented control updated with Analytics link for office roles
 
 ### 2.9 Phase 2 Wrap-Up
 - [ ] Run a full end-to-end test: customer submits → office reviews → field crew visits → all data persists

@@ -37,25 +37,41 @@ export default function PropertyDetail() {
   const [visits, setVisits] = useState([])
   const [outreach, setOutreach] = useState([])
   const [loading, setLoading] = useState(true)
+  const [visitsError, setVisitsError] = useState(false)
+  const [outreachError, setOutreachError] = useState(false)
 
   useEffect(() => {
-    const loadData = async () => {
+    let mounted = true
+    const loadProperty = async () => {
       try {
-        const [propRes, visitsRes, outreachRes] = await Promise.all([
-          getProperty(accountNumber),
-          getVisits({ account_number: accountNumber }),
-          getOutreach({ account_number: accountNumber }),
-        ])
-        setProperty(propRes.data)
-        setVisits(visitsRes.data)
-        setOutreach(outreachRes.data)
+        const res = await getProperty(accountNumber)
+        if (mounted) setProperty(res.data)
       } catch (err) {
-        console.error(err)
+        console.error('property load failed', err)
       } finally {
-        setLoading(false)
+        if (mounted) setLoading(false)
       }
     }
-    loadData()
+    const loadVisits = async () => {
+      try {
+        const res = await getVisits({ account_number: accountNumber })
+        if (mounted) setVisits(res.data)
+      } catch {
+        if (mounted) setVisitsError(true)
+      }
+    }
+    const loadOutreach = async () => {
+      try {
+        const res = await getOutreach({ account_number: accountNumber })
+        if (mounted) setOutreach(res.data)
+      } catch {
+        if (mounted) setOutreachError(true)
+      }
+    }
+    loadProperty()
+    loadVisits()
+    loadOutreach()
+    return () => { mounted = false }
   }, [accountNumber])
 
   if (loading) return (
@@ -162,12 +178,16 @@ export default function PropertyDetail() {
       <RevealItem>
         <Tabs defaultValue="visits">
           <TabsList>
-            <TabsTrigger value="visits">Visits ({visits.length})</TabsTrigger>
-            <TabsTrigger value="outreach">Outreach ({outreach.length})</TabsTrigger>
+            <TabsTrigger value="visits">Visits {visitsError ? '(!)' : `(${visits.length})`}</TabsTrigger>
+            <TabsTrigger value="outreach">Outreach {outreachError ? '(!)' : `(${outreach.length})`}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="visits">
-            {visits.length === 0 ? (
+            {visitsError ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Could not load visits
+              </div>
+            ) : visits.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 No visits recorded for this property
               </div>
@@ -190,14 +210,16 @@ export default function PropertyDetail() {
                         <TableCell className="tabular-nums">
                           {v.visited_at ? new Date(v.visited_at).toLocaleDateString() : '—'}
                         </TableCell>
-                        <TableCell
-                          className="font-mono font-semibold text-[#1A56A0]"
-                          title={v.created_by_email || undefined}
-                        >
+                        <TableCell className="font-mono font-semibold text-[#1A56A0]">
                           <span>{v.initials || '—'}</span>
                           {v.created_by_email && (
                             <div className="text-[10px] font-sans font-normal text-muted-foreground truncate max-w-[140px]">
                               {v.created_by_email}
+                            </div>
+                          )}
+                          {v.entered_by_email && (
+                            <div className="text-[10px] font-sans font-normal text-amber-600 truncate max-w-[140px]">
+                              Entered by {v.entered_by_email}
                             </div>
                           )}
                         </TableCell>
@@ -226,7 +248,11 @@ export default function PropertyDetail() {
           </TabsContent>
 
           <TabsContent value="outreach">
-            {outreach.length === 0 ? (
+            {outreachError ? (
+              <div className="text-center py-12 text-muted-foreground">
+                Could not load outreach
+              </div>
+            ) : outreach.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 No outreach recorded for this property
               </div>

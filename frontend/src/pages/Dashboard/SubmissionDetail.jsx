@@ -90,7 +90,6 @@ export default function SubmissionDetail() {
     try {
       await reviewSubmission(id, {
         review_status: 'Approved',
-        reviewed_by: 'staff',
         verified_material: selectedMaterial,
       })
       toast.success(`Submission approved — property updated to ${MATERIAL_TO_STATUS[selectedMaterial]}`)
@@ -107,7 +106,6 @@ export default function SubmissionDetail() {
     try {
       await reviewSubmission(id, {
         review_status: 'Rejected',
-        reviewed_by: 'staff',
         notes: rejectReason.trim() || undefined,
       })
       toast.success('Submission rejected — property record unchanged')
@@ -308,7 +306,7 @@ export default function SubmissionDetail() {
             <CardContent className="p-5">
               <p className="text-sm text-muted-foreground">
                 {submission.review_status === 'Approved' ? 'Approved' : 'Rejected'} by{' '}
-                <span className="font-medium text-slate-700">{submission.reviewed_by}</span>
+                <span className="font-medium text-slate-700">{submission.reviewed_by_name || 'staff'}</span>
                 {submission.reviewed_at && (
                   <> on {new Date(submission.reviewed_at).toLocaleString()}</>
                 )}

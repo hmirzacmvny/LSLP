@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { signOut, onAuthStateChanged } from 'firebase/auth'
+import { signOut } from 'firebase/auth'
 import { auth } from '../lib/firebase'
+import { useUser } from '../lib/UserContext'
 import { getPendingCount, syncPendingVisits } from '../lib/sync'
 import { getSubmissionCounts } from '../lib/api'
-import { colors } from '../lib/design-system'
+import { colors, getRoleDisplay, roleConfig } from '../lib/design-system'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -24,32 +25,34 @@ import {
   SheetClose,
 } from '@/components/ui/sheet'
 import {
-  Menu, LogOut, RefreshCw, LayoutDashboard, Home, ClipboardPen, Megaphone, Smartphone, Inbox,
+  Menu, LogOut, RefreshCw, LayoutDashboard, Home, ClipboardPen, Megaphone, Smartphone, Inbox, UserCircle, BarChart3,
 } from 'lucide-react'
 
+const OFFICE_ROLES = ['office_staff', 'supervisor', 'admin']
+const FIELD_ROLES = ['field_crew', 'supervisor', 'admin']
+
 const navLinks = [
-  { label: 'Overview', path: '/', icon: LayoutDashboard },
-  { label: 'Properties', path: '/properties', icon: Home },
-  { label: 'Submissions', path: '/submissions', icon: Inbox },
-  { label: 'Log Visit', path: '/visits/new', icon: ClipboardPen },
-  { label: 'Outreach', path: '/outreach/new', icon: Megaphone },
-  { label: 'Field App', path: '/field', icon: Smartphone },
+  { label: 'Overview', path: '/', icon: LayoutDashboard, roles: OFFICE_ROLES },
+  { label: 'Properties', path: '/properties', icon: Home, roles: OFFICE_ROLES },
+  { label: 'Submissions', path: '/submissions', icon: Inbox, roles: OFFICE_ROLES },
+  { label: 'Analytics', path: '/analytics', icon: BarChart3, roles: OFFICE_ROLES },
+  { label: 'Log Visit', path: '/visits/new', icon: ClipboardPen, roles: OFFICE_ROLES },
+  { label: 'Outreach', path: '/outreach/new', icon: Megaphone, roles: OFFICE_ROLES },
+  { label: 'Field App', path: '/field', icon: Smartphone, roles: FIELD_ROLES },
 ]
 
 export default function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { firebaseUser: user, role, profile } = useUser()
   const [pendingCount, setPendingCount] = useState(0)
   const [syncStatus, setSyncStatus] = useState(null)
   const [failedCount, setFailedCount] = useState(0)
-  const [user, setUser] = useState(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [submissionsPending, setSubmissionsPending] = useState(0)
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, (u) => setUser(u))
-    return unsub
-  }, [])
+  const visibleLinks = role ? navLinks.filter((l) => l.roles.includes(role)) : []
+  const isOffice = role && OFFICE_ROLES.includes(role)
 
   useEffect(() => {
     getPendingCount().then(setPendingCount)
@@ -85,14 +88,14 @@ export default function Navbar() {
         setSubmissionsPending(res.data.pending)
       } catch {}
     }
-    if (user) loadSubmissionCounts()
+    if (isOffice) loadSubmissionCounts()
 
     const onSubmissionReviewed = () => {
-      if (user) loadSubmissionCounts()
+      if (isOffice) loadSubmissionCounts()
     }
     window.addEventListener('lslp:submission-reviewed', onSubmissionReviewed)
     return () => window.removeEventListener('lslp:submission-reviewed', onSubmissionReviewed)
-  }, [user])
+  }, [isOffice])
 
   const handleRetry = () => {
     setSyncStatus(null)
@@ -145,7 +148,7 @@ export default function Navbar() {
 
         {/* Left — Seal + title */}
         <button
-          onClick={() => navigate('/')}
+          onClick={() => navigate(isOffice ? '/' : '/field')}
           className="flex items-center gap-3 shrink-0 group"
         >
           <img
@@ -170,7 +173,7 @@ export default function Navbar() {
         {/* Right — Desktop nav */}
         <div className="hidden lg:flex items-center gap-1">
           <div className="flex items-center bg-white/10 rounded-lg p-0.5">
-            {navLinks.map((link) => {
+            {visibleLinks.map((link) => {
               const Icon = link.icon
               const active = isActive(link.path)
               const showBadge = link.path === '/submissions' && submissionsPending > 0
@@ -198,17 +201,32 @@ export default function Navbar() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="ml-3 w-8 h-8 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-xs font-bold text-white hover:bg-white/25 transition-colors">
+              <button className="ml-3 w-9 h-9 rounded-full bg-white/15 border border-white/20 flex items-center justify-center text-xs font-bold text-white hover:bg-white/25 transition-colors">
                 {userInitials}
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="font-normal">
-                <div className="text-sm font-medium truncate">{user?.email || 'Not signed in'}</div>
-                <Badge variant="outline" className="mt-1 text-[10px]">Staff</Badge>
-              </DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="w-64">
+              <div className="px-3 py-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-sm font-bold text-slate-600 shrink-0">
+                  {userInitials}
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-medium truncate">{profile?.name || user?.email || 'Not signed in'}</div>
+                  <div className="text-xs text-muted-foreground truncate">{user?.email}</div>
+                  {role && (
+                    <Badge variant="outline" className={`mt-1 text-[10px] ${roleConfig[role]?.badgeCls || ''}`}>
+                      {getRoleDisplay(role)}
+                    </Badge>
+                  )}
+                </div>
+              </div>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleSignOut}>
+              <DropdownMenuItem onClick={() => navigate('/account')}>
+                <UserCircle className="size-4" />
+                Account
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleSignOut} className="text-red-600 focus:text-red-600">
                 <LogOut className="size-4" />
                 Sign Out
               </DropdownMenuItem>
@@ -230,7 +248,7 @@ export default function Navbar() {
                 <SheetTitle className="text-left">Menu</SheetTitle>
               </SheetHeader>
               <div className="flex flex-col gap-1 px-4 py-3">
-                {navLinks.map((link) => {
+                {visibleLinks.map((link) => {
                   const Icon = link.icon
                   const showBadge = link.path === '/submissions' && submissionsPending > 0
                   return (
@@ -252,19 +270,34 @@ export default function Navbar() {
                   )
                 })}
               </div>
-              <div className="mt-auto border-t px-4 py-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+              <div className="mt-auto border-t px-4 py-4 space-y-3">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-xs font-bold text-slate-600 shrink-0">
                     {userInitials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{user?.email || 'Not signed in'}</p>
-                    <Badge variant="outline" className="text-[10px] mt-0.5">Staff</Badge>
+                    <p className="text-sm font-medium truncate">{profile?.name || user?.email || 'Not signed in'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+                    {role && (
+                      <Badge variant="outline" className={`text-[10px] mt-0.5 ${roleConfig[role]?.badgeCls || ''}`}>
+                        {getRoleDisplay(role)}
+                      </Badge>
+                    )}
                   </div>
                 </div>
+                <SheetClose asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2"
+                    onClick={() => { navigate('/account'); setMobileOpen(false) }}
+                  >
+                    <UserCircle className="size-4" />
+                    Account
+                  </Button>
+                </SheetClose>
                 <Button
                   variant="outline"
-                  className="w-full"
+                  className="w-full text-red-600 hover:text-red-600"
                   onClick={() => { handleSignOut(); setMobileOpen(false) }}
                 >
                   <LogOut className="size-4" />

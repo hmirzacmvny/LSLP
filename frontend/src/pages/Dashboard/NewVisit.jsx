@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { createVisit } from '../../lib/api'
+import { createVisit, getFieldUsers } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
 import { typeScale } from '../../lib/design-system'
@@ -15,7 +15,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select'
-import { ArrowLeft, Camera, AlertCircle, CheckCircle, WifiOff } from 'lucide-react'
+import { ArrowLeft, Camera, AlertCircle, CheckCircle, WifiOff, Loader2 } from 'lucide-react'
 
 const ACCT_RE = /^\d{6}-\d{3}$/
 
@@ -34,11 +34,11 @@ function validate(form) {
   if (!acct || !ACCT_RE.test(acct)) {
     errs.account_number = 'Enter a valid account number (e.g. 003518-000)'
   }
+  if (!form.performed_by_uid) {
+    errs.performed_by_uid = 'Select the crew member who performed this inspection'
+  }
   if (!form.access_granted) {
     errs.access_granted = 'Please select an access status'
-  }
-  if (form.initials && !/^[a-zA-Z]{1,5}$/.test(form.initials)) {
-    errs.initials = 'Initials must be letters only, max 5 characters'
   }
   if (form.notes.length > 500) {
     errs.notes = 'Notes must be 500 characters or fewer'
@@ -55,14 +55,24 @@ export default function NewVisit() {
   const [offlineSaved, setOfflineSaved] = useState(false)
   const [photos, setPhotos] = useState([])
 
+  const [fieldUsers, setFieldUsers] = useState([])
+  const [fieldUsersLoading, setFieldUsersLoading] = useState(true)
+
   const [form, setForm] = useState({
     account_number: '',
-    initials: '',
+    performed_by_uid: '',
     access_granted: '',
     verification_outcome: '',
     property_type: '',
     notes: '',
   })
+
+  useEffect(() => {
+    getFieldUsers()
+      .then((res) => setFieldUsers(res.data))
+      .catch(() => setFieldUsers([]))
+      .finally(() => setFieldUsersLoading(false))
+  }, [])
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -110,9 +120,12 @@ export default function NewVisit() {
 
     try {
       const formData = new FormData()
-      Object.entries(form).forEach(([key, val]) => {
-        if (val) formData.append(key, val)
-      })
+      formData.append('account_number', form.account_number.trim())
+      formData.append('performed_by_uid', form.performed_by_uid)
+      if (form.access_granted) formData.append('access_granted', form.access_granted)
+      if (form.verification_outcome) formData.append('verification_outcome', form.verification_outcome)
+      if (form.property_type) formData.append('property_type', form.property_type)
+      if (form.notes) formData.append('notes', form.notes)
       photos.forEach((photo) => formData.append('photos', photo))
 
       const res = await createVisit(formData)
@@ -121,6 +134,8 @@ export default function NewVisit() {
     } catch (err) {
       if (err.response?.status === 404) {
         setApiError('Property not found. Check the account number and try again.')
+      } else if (err.response?.status === 422) {
+        setApiError(err.response.data?.detail || 'Validation error.')
       } else {
         setApiError('Something went wrong. Is the API running?')
       }
@@ -171,6 +186,8 @@ export default function NewVisit() {
       </div>
     )
 
+  const selectedPerformer = fieldUsers.find((u) => u.firebase_uid === form.performed_by_uid)
+
   return (
     <PageReveal className="p-6 max-w-[640px] mx-auto">
       <RevealItem className="mb-6">
@@ -179,7 +196,7 @@ export default function NewVisit() {
           Back
         </Button>
         <h1 className={typeScale.pageTitle}>Log Field Visit</h1>
-        <p className="text-sm text-muted-foreground mt-1">Record a field inspection visit</p>
+        <p className="text-sm text-muted-foreground mt-1">Record a field inspection visit on behalf of a crew member</p>
       </RevealItem>
 
       <RevealItem>
@@ -204,18 +221,43 @@ export default function NewVisit() {
               </div>
 
               <div className="space-y-2">
-                <Label>Staff Initials</Label>
-                <Input
-                  name="initials"
-                  value={form.initials}
-                  onChange={handleChange}
-                  placeholder="e.g. MN"
-                  maxLength={5}
-                  className="uppercase"
-                  aria-invalid={!!fieldErrors.initials}
-                />
-                {fieldErrors.initials && (
-                  <p className="text-xs text-red-600">{fieldErrors.initials}</p>
+                <Label>
+                  Performed By <span className="text-red-500">*</span>
+                </Label>
+                {fieldUsersLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                    <Loader2 className="size-4 animate-spin" /> Loading crew members...
+                  </div>
+                ) : fieldUsers.length === 0 ? (
+                  <p className="text-xs text-red-600">No inspection staff found. Check user setup.</p>
+                ) : (
+                  <Select
+                    value={form.performed_by_uid}
+                    onValueChange={(v) => {
+                      setForm({ ...form, performed_by_uid: v })
+                      if (fieldErrors.performed_by_uid)
+                        setFieldErrors((prev) => ({ ...prev, performed_by_uid: '' }))
+                    }}
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="Select crew member..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {fieldUsers.map((u) => (
+                        <SelectItem key={u.firebase_uid} value={u.firebase_uid}>
+                          {u.name}{u.initials ? ` (${u.initials})` : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {fieldErrors.performed_by_uid && (
+                  <p className="text-xs text-red-600">{fieldErrors.performed_by_uid}</p>
+                )}
+                {selectedPerformer && (
+                  <p className="text-xs text-muted-foreground">
+                    Initials: <span className="font-mono font-semibold text-[#1A56A0]">{selectedPerformer.initials || '—'}</span>
+                  </p>
                 )}
               </div>
 

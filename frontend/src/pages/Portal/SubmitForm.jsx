@@ -52,7 +52,7 @@ export default function SubmitForm() {
   const [yearConstructed, setYearConstructed] = useState('')
   const [priorLineWork, setPriorLineWork] = useState(null)
   const [priorLineNotes, setPriorLineNotes] = useState('')
-  const [step2Error, setStep2Error] = useState('')
+  const [fieldErrors, setFieldErrors] = useState({})
 
   const [photos, setPhotos] = useState([])
   const [photoPreviewURLs, setPhotoPreviewURLs] = useState([])
@@ -121,9 +121,19 @@ export default function SubmitForm() {
     setConfirmed(false)
   }
 
+  const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']
+  const MAX_PHOTO_SIZE = 10 * 1024 * 1024
+
   const handlePhotoChange = (e) => {
     const incoming = Array.from(e.target.files)
-    const merged = [...photos, ...incoming].slice(0, 3)
+    const rejected = []
+    const valid = incoming.filter((f) => {
+      if (!ALLOWED_TYPES.includes(f.type)) { rejected.push(`${f.name}: unsupported format`); return false }
+      if (f.size > MAX_PHOTO_SIZE) { rejected.push(`${f.name}: exceeds 10 MB`); return false }
+      return true
+    })
+    if (rejected.length) setSubmitError(rejected.join('. '))
+    const merged = [...photos, ...valid].slice(0, 3)
     setPhotos(merged)
     setPhotoPreviewURLs(merged.map((f) => URL.createObjectURL(f)))
     e.target.value = ''
@@ -135,11 +145,26 @@ export default function SubmitForm() {
     setPhotoPreviewURLs(updated.map((f) => URL.createObjectURL(f)))
   }
 
+  const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
+  const isValidPhone = (v) => v.replace(/[\s()\-+.]/g, '').length >= 7
+
   const handleStep2Next = () => {
-    if (!name.trim()) { setStep2Error('Please enter your full name.'); return }
-    if (!contact.trim()) { setStep2Error('Please enter a phone number or email address.'); return }
-    setStep2Error('')
+    const errors = {}
+    const trimmedName = name.trim()
+    const trimmedContact = contact.trim()
+    if (!trimmedName) errors.name = 'Full name is required.'
+    else if (trimmedName.length < 2) errors.name = 'Name must be at least 2 characters.'
+    if (!trimmedContact) errors.contact = 'Phone number or email is required.'
+    else if (!isValidEmail(trimmedContact) && !isValidPhone(trimmedContact))
+      errors.contact = 'Enter a valid email address or phone number.'
+    if (priorLineWork === null) errors.priorLineWork = 'Please select an option.'
+    setFieldErrors(errors)
+    if (Object.keys(errors).length > 0) return
     setStep(3)
+  }
+
+  const clearFieldError = (field) => {
+    if (fieldErrors[field]) setFieldErrors((prev) => { const n = { ...prev }; delete n[field]; return n })
   }
 
   const handleSubmit = async () => {
@@ -386,10 +411,11 @@ export default function SubmitForm() {
                         </Label>
                         <Input
                           value={name}
-                          onChange={(e) => setName(e.target.value)}
+                          onChange={(e) => { setName(e.target.value); clearFieldError('name') }}
                           placeholder="Jane Smith"
-                          className="h-11"
+                          className={`h-11 ${fieldErrors.name ? 'border-red-400' : ''}`}
                         />
+                        {fieldErrors.name && <p className="text-xs text-red-500">{fieldErrors.name}</p>}
                       </div>
 
                       <div className="space-y-2">
@@ -398,10 +424,11 @@ export default function SubmitForm() {
                         </Label>
                         <Input
                           value={contact}
-                          onChange={(e) => setContact(e.target.value)}
+                          onChange={(e) => { setContact(e.target.value); clearFieldError('contact') }}
                           placeholder="(914) 555-1234 or jane@example.com"
-                          className="h-11"
+                          className={`h-11 ${fieldErrors.contact ? 'border-red-400' : ''}`}
                         />
+                        {fieldErrors.contact && <p className="text-xs text-red-500">{fieldErrors.contact}</p>}
                       </div>
 
                       <div className="space-y-2">
@@ -427,7 +454,7 @@ export default function SubmitForm() {
                       <div className="space-y-2">
                         <Label>
                           Has any work been done on your water line?{' '}
-                          <span className="text-muted-foreground font-normal">(optional)</span>
+                          <span className="text-red-500">*</span>
                         </Label>
                         <div className="grid grid-cols-3 gap-2">
                           {[
@@ -439,7 +466,7 @@ export default function SubmitForm() {
                               <Button
                                 type="button"
                                 variant={priorLineWork === opt.value ? 'default' : 'outline'}
-                                onClick={() => setPriorLineWork(opt.value)}
+                                onClick={() => { setPriorLineWork(opt.value); clearFieldError('priorLineWork') }}
                                 className={`w-full ${
                                   priorLineWork === opt.value
                                     ? 'bg-[#1A56A0] hover:bg-[#143F75]'
@@ -451,6 +478,7 @@ export default function SubmitForm() {
                             </motion.div>
                           ))}
                         </div>
+                        {fieldErrors.priorLineWork && <p className="text-xs text-red-500">{fieldErrors.priorLineWork}</p>}
 
                         <AnimatePresence>
                           {priorLineWork === true && (
@@ -475,13 +503,6 @@ export default function SubmitForm() {
                           )}
                         </AnimatePresence>
                       </div>
-
-                      {step2Error && (
-                        <Alert variant="destructive">
-                          <AlertCircle className="size-4" />
-                          <AlertDescription>{step2Error}</AlertDescription>
-                        </Alert>
-                      )}
 
                       <Button
                         onClick={handleStep2Next}

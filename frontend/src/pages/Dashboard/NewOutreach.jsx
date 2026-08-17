@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { createOutreach } from '../../lib/api'
+import { useUser } from '../../lib/UserContext'
 import { typeScale } from '../../lib/design-system'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
 import { Card, CardContent } from '@/components/ui/card'
@@ -13,7 +14,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem, SelectGroup, SelectLabel,
 } from '@/components/ui/select'
-import { ArrowLeft, AlertCircle, CheckCircle } from 'lucide-react'
+import { ArrowLeft, AlertCircle, CheckCircle, UserCircle } from 'lucide-react'
 
 const ACCT_RE = /^\d{6}-\d{3}$/
 
@@ -31,9 +32,6 @@ function validate(form) {
   } else if (form.outreach_date > new Date().toISOString().split('T')[0]) {
     errs.outreach_date = 'Date cannot be in the future'
   }
-  if (form.initials && !/^[a-zA-Z]{1,5}$/.test(form.initials)) {
-    errs.initials = 'Initials must be letters only, max 5 characters'
-  }
   if (form.notes.length > 500) {
     errs.notes = 'Notes must be 500 characters or fewer'
   }
@@ -46,6 +44,7 @@ function validate(form) {
 export default function NewOutreach() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { firebaseUser, profile } = useUser()
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -58,7 +57,6 @@ export default function NewOutreach() {
     outreach_date: new Date().toISOString().split('T')[0],
     method: '',
     outcome: '',
-    initials: '',
     notes: '',
     is_customer_initiated: false,
     customer_initiated_notes: '',
@@ -222,20 +220,14 @@ export default function NewOutreach() {
                 </Select>
               </div>
 
-              <div className="space-y-2">
-                <Label>Staff Initials</Label>
-                <Input
-                  name="initials"
-                  value={form.initials}
-                  onChange={handleChange}
-                  placeholder="e.g. MN"
-                  maxLength={5}
-                  className="uppercase"
-                  aria-invalid={!!fieldErrors.initials}
-                />
-                {fieldErrors.initials && (
-                  <p className="text-xs text-red-600">{fieldErrors.initials}</p>
-                )}
+              <div className="flex items-center gap-3 p-3 border rounded-lg bg-slate-50/50">
+                <UserCircle className="size-7 text-[#1A56A0] shrink-0" />
+                <div className="min-w-0">
+                  {profile?.name && (
+                    <div className="text-sm font-medium text-slate-800">{profile.name}</div>
+                  )}
+                  <div className="text-xs text-muted-foreground truncate">{firebaseUser?.email}</div>
+                </div>
               </div>
 
               <div className="space-y-2">

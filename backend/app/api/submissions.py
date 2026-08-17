@@ -12,6 +12,7 @@ from app.models.audit_log import AuditLog
 from app.models.property import Property
 from app.models.submission import CustomerSubmission
 from app.schemas.submission import SubmissionCounts, SubmissionResponse, SubmissionReview
+from app.models.user import User
 from app.services.auth import require_role
 from app.services.storage import save_photo
 
@@ -28,10 +29,14 @@ MATERIAL_TO_STATUS = {
 }
 
 
-def _attach_address(submission, db: Session):
-    """Attach property address to a submission for the response."""
+def _attach_extras(submission, db: Session):
     prop = db.query(Property.address).filter(Property.account_number == submission.account_number).first()
     submission.address = prop[0] if prop else None
+    if submission.reviewed_by:
+        reviewer = db.query(User.name).filter(User.firebase_uid == submission.reviewed_by).first()
+        submission.reviewed_by_name = reviewer[0] if reviewer else None
+    else:
+        submission.reviewed_by_name = None
     return submission
 
 
@@ -66,6 +71,10 @@ def portal_property_search(
     return [{"account_number": r.account_number, "address": r.address} for r in results]
 
 
+ALLOWED_PHOTO_TYPES = {"image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"}
+MAX_PHOTO_BYTES = 10 * 1024 * 1024
+
+
 @router.post("/", response_model=SubmissionResponse)
 def create_submission(
     account_number: str = Form(...),
@@ -78,6 +87,22 @@ def create_submission(
     db: Session = Depends(get_db),
     _=Depends(_verify_portal_key),
 ):
+    import re
+
+    errors = []
+    trimmed_name = submitter_name.strip()
+    trimmed_contact = contact_info.strip()
+    if len(trimmed_name) < 2:
+        errors.append("submitter_name must be at least 2 characters")
+    if not trimmed_contact:
+        errors.append("contact_info is required")
+    elif not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", trimmed_contact) and len(re.sub(r"[\s()\-+.]", "", trimmed_contact)) < 7:
+        errors.append("contact_info must be a valid email or phone number")
+    if prior_line_work is None:
+        errors.append("prior_line_work is required")
+    if errors:
+        raise HTTPException(status_code=422, detail="; ".join(errors))
+
     prop = db.query(Property).filter(Property.account_number == account_number).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
@@ -86,6 +111,12 @@ def create_submission(
     if photos:
         for photo in photos:
             if photo.filename:
+                if photo.content_type and photo.content_type not in ALLOWED_PHOTO_TYPES:
+                    raise HTTPException(status_code=422, detail=f"Unsupported photo format: {photo.content_type}")
+                content = photo.file.read()
+                if len(content) > MAX_PHOTO_BYTES:
+                    raise HTTPException(status_code=422, detail=f"Photo exceeds 10 MB limit: {photo.filename}")
+                photo.file.seek(0)
                 path = save_photo(photo, "customer", account_number)
                 photo_urls.append(path)
 
@@ -98,12 +129,13 @@ def create_submission(
         prior_line_notes=prior_line_notes if prior_line_work else None,
         photo_urls=photo_urls,
         review_status="Pending",
+        submitted_at=datetime.now(timezone.utc),
     )
 
     db.add(submission)
     db.commit()
     db.refresh(submission)
-    return _attach_address(submission, db)
+    return _attach_extras(submission, db)
 
 
 # ── Internal endpoints (Firebase JWT + role) ──────────────────────────────────
@@ -139,7 +171,7 @@ def get_submissions(
         query = query.filter(CustomerSubmission.review_status == review_status)
     results = query.order_by(CustomerSubmission.submitted_at.desc()).offset(skip).limit(limit).all()
     for s in results:
-        _attach_address(s, db)
+        _attach_extras(s, db)
     return results
 
 
@@ -152,7 +184,7 @@ def get_submission(
     s = db.query(CustomerSubmission).filter(CustomerSubmission.id == submission_id).first()
     if not s:
         raise HTTPException(status_code=404, detail="Submission not found")
-    return _attach_address(s, db)
+    return _attach_extras(s, db)
 
 
 @router.patch("/{submission_id}/review", response_model=SubmissionResponse)
@@ -160,7 +192,7 @@ def review_submission(
     submission_id: int,
     body: SubmissionReview,
     db: Session = Depends(get_db),
-    _=Depends(require_role(["office_staff", "supervisor", "admin"])),
+    user: User = Depends(require_role(["office_staff", "supervisor", "admin"])),
 ):
     s = db.query(CustomerSubmission).filter(CustomerSubmission.id == submission_id).first()
     if not s:
@@ -173,7 +205,7 @@ def review_submission(
         )
 
     s.review_status = body.review_status
-    s.reviewed_by = body.reviewed_by
+    s.reviewed_by = user.firebase_uid
     s.reviewed_at = datetime.now(timezone.utc)
 
     if body.notes:
@@ -193,10 +225,11 @@ def review_submission(
                 field_changed="verified_status",
                 old_value=old_status,
                 new_value=new_status,
-                changed_by=f"{body.reviewed_by} (via customer submission #{s.id})",
+                changed_by=user.firebase_uid,
+                changed_at=datetime.now(timezone.utc),
             )
             db.add(audit)
 
     db.commit()
     db.refresh(s)
-    return _attach_address(s, db)
+    return _attach_extras(s, db)

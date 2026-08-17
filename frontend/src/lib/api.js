@@ -43,6 +43,9 @@ export const createVisit = (formData) =>
     headers: { 'Content-Type': 'multipart/form-data' },
   })
 
+export const getFieldUsers = () =>
+  api.get('/api/visits/field-users')
+
 // OUTREACH
 export const getOutreach = (params) =>
   api.get('/api/outreach/', { params })
@@ -66,5 +69,17 @@ export const reviewSubmission = (id, data) =>
 // DASHBOARD
 export const getDashboardSummary = () =>
   api.get('/api/dashboard/summary')
+
+// AUTH
+export const getCurrentUser = () =>
+  api.get('/api/auth/me')
+
+// USERS
+export const getUserActivity = (params) =>
+  api.get('/api/users/me/activity', { params })
+
+// ANALYTICS
+export const getAnalytics = (params) =>
+  api.get('/api/analytics/', { params })
 
 export default api

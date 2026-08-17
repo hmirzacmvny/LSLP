@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from sqlalchemy import func, text
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from app.database import get_db
 from app.models.property import Property
 from app.models.visit import Visit
@@ -63,7 +64,10 @@ def get_dashboard_summary(
     """)).scalar()
 
     recent_visits = db.execute(text("""
-        SELECT 'visit' AS type, p.address, v.account_number, v.initials AS who, v.visited_at AS occurred_at
+        SELECT 'visit' AS type, p.address, v.account_number, v.initials AS who, v.visited_at AS occurred_at,
+               CASE WHEN v.entered_by_uid IS NOT NULL AND v.entered_by_uid != v.created_by_uid
+                    THEN (SELECT u.name FROM users u WHERE u.firebase_uid = v.entered_by_uid)
+                    ELSE NULL END AS entered_by_name
         FROM visits v
         JOIN properties p ON p.account_number = v.account_number
         WHERE v.visited_at IS NOT NULL
@@ -80,9 +84,13 @@ def get_dashboard_summary(
         LIMIT 8
     """)).mappings().all()
 
+    _server_tz = ZoneInfo("America/New_York")
+
     def _to_utc_datetime(val):
         if isinstance(val, datetime):
-            return val if val.tzinfo else val.replace(tzinfo=timezone.utc)
+            if val.tzinfo:
+                return val.astimezone(timezone.utc)
+            return val.replace(tzinfo=_server_tz).astimezone(timezone.utc)
         if isinstance(val, date):
             return datetime(val.year, val.month, val.day, tzinfo=timezone.utc)
         return None
