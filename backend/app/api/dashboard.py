@@ -9,6 +9,7 @@ from app.models.visit import Visit
 from app.models.outreach import OutreachLog
 from app.models.submission import CustomerSubmission
 from app.services.auth import require_role
+from app.services.classification import compute_inventory_progress
 
 router = APIRouter()
 
@@ -112,9 +113,12 @@ def get_dashboard_summary(
     for item in combined:
         item["occurred_at"] = item["occurred_at"].isoformat()
 
+    inventory_progress = compute_inventory_progress(db)
+
     return {
         "classification": classification,
         "total_properties": total_properties,
+        "inventory_progress": inventory_progress,
         "pending_submissions": pending_submissions,
         "visits_last_7": visits_last_7,
         "visits_prior_7": visits_prior_7,

@@ -22,6 +22,39 @@ def clean(val):
         return None
     return str(val).strip()
 
+# ── Canonical value sets for normalization on import ─────────────
+_MATERIAL_CANONICAL = {
+    "lead": "Lead", "copper": "Copper", "galvanized": "Galvanized",
+    "cast iron": "Cast Iron", "iron": "Iron", "brass": "Brass",
+    "plastic": "Plastic", "unknown": "Unknown",
+}
+
+_VERIFICATION_METHOD_CANONICAL = {
+    "customer id with photo or other verification": "Customer ID with Photo or Other Verification",
+    "customer identification": "Customer Identification",
+    "customer identification with photo or other verification": "Customer Identification with Photo or Other Verification",
+    "excavation": "Excavation",
+    "field inspection": "Field Inspection",
+    "field verification": "Field Verification",
+    "not verified": "Not Verified",
+    "onsite verification": "Onsite Verification",
+    "other": "Other",
+    "pending import": "Pending Import",
+    "records": "Records",
+}
+
+def normalize(val, canonical_map):
+    if val is None:
+        return None
+    key = val.strip().lower()
+    return canonical_map.get(key, val.strip())
+
+def clean_material(val):
+    return normalize(clean(val), _MATERIAL_CANONICAL)
+
+def clean_method(val):
+    return normalize(clean(val), _VERIFICATION_METHOD_CANONICAL)
+
 # ══════════════════════════════════════════════════════════════════
 # 1. IMPORT PROPERTIES
 # Source: SL Inventory tab
@@ -46,7 +79,7 @@ for _, row in df_props.iterrows():
         cursor.execute("""
             INSERT INTO properties (
                 account_number, service_file_number, acct_status,
-                address, zip,./
+                address, zip,
                 hs_service, ss_service,
                 ub_private_side, ub_utility_side, ub_sl_category, ub_account_type,
                 ub_mapped_private_method, ub_mapped_public_method,
@@ -68,16 +101,16 @@ for _, row in df_props.iterrows():
             clean(row.get("Acct Status")),
             clean(row.get("UB Address")),
             clean(row.get("Zip (Lot)")),
-            clean(row.get("H.S. Service")),
-            clean(row.get("S.S. Service")),
+            clean_material(row.get("H.S. Service")),
+            clean_material(row.get("S.S. Service")),
             clean(row.get("UB Private Side")),
             clean(row.get("UB Utility Side")),
             clean(row.get("UB SL Category")),
             clean(row.get("UB Account Type")),
-            clean(row.get("UB Mapped - Private Side Verification Method")),
-            clean(row.get("UB Mapped - Public Side Verification Method")),
-            clean(row.get("H.S. Verification Method")),
-            clean(row.get("S.S. Verification Method")),
+            clean_method(row.get("UB Mapped - Private Side Verification Method")),
+            clean_method(row.get("UB Mapped - Public Side Verification Method")),
+            clean_method(row.get("H.S. Verification Method")),
+            clean_method(row.get("S.S. Verification Method")),
             clean(row.get("S.S. Previously Lead?")),
         ))
         inserted += 1

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.services.auth import require_role
+from app.services.classification import compute_inventory_progress
 
 router = APIRouter()
 
@@ -12,6 +13,10 @@ _MAT = """CASE
     WHEN LOWER({c}) = 'lead' THEN 'Lead'
     WHEN LOWER({c}) = 'copper' THEN 'Copper'
     WHEN LOWER({c}) = 'galvanized' THEN 'Galvanized'
+    WHEN LOWER({c}) = 'cast iron' THEN 'Cast Iron'
+    WHEN LOWER({c}) = 'iron' THEN 'Iron'
+    WHEN LOWER({c}) = 'brass' THEN 'Brass'
+    WHEN LOWER({c}) = 'plastic' THEN 'Plastic'
     WHEN LOWER({c}) IN ('unknown', '') OR {c} IS NULL THEN 'Unknown'
     ELSE 'Other'
 END"""
@@ -24,7 +29,10 @@ _OUT = """CASE
     ELSE 'Other'
 END"""
 
-MATERIAL_ORDER = ["Lead", "Copper", "Galvanized", "Unknown", "Other"]
+MATERIAL_ORDER = [
+    "Lead", "Copper", "Galvanized", "Cast Iron", "Iron",
+    "Brass", "Plastic", "Unknown", "Other",
+]
 
 
 def _month_range(start: date, end: date):
@@ -139,19 +147,8 @@ def get_analytics(
     pair_lookup = {(r.ss_mat, r.hs_mat): r.count for r in pairings_raw}
     matrix = [[pair_lookup.get((ss, hs), 0) for hs in hs_mats] for ss in ss_mats]
 
-    # --- Classification Summary ---
-    cls = db.execute(
-        text(f"""SELECT COUNT(*) as total,
-            SUM(CASE WHEN {_MAT.format(c='p.hs_service')} != 'Unknown'
-                      AND {_MAT.format(c='p.ss_service')} != 'Unknown' THEN 1 ELSE 0 END) as classified,
-            SUM(CASE WHEN {_MAT.format(c='p.hs_service')} = 'Unknown'
-                       OR {_MAT.format(c='p.ss_service')} = 'Unknown' THEN 1 ELSE 0 END) as unknown_pending
-            FROM properties p WHERE {prop_where}"""),
-        params,
-    ).fetchone()
-    total = cls.total or 0
-    classified = cls.classified or 0
-    unknown_pending = cls.unknown_pending or 0
+    # --- Inventory Progress (shared with dashboard) ---
+    inventory_progress = compute_inventory_progress(db, prop_where, params)
 
     # --- Time range for continuous series ---
     if date_from and date_to:
@@ -231,13 +228,7 @@ def get_analytics(
             "cols": hs_mats,
             "matrix": matrix,
         },
-        "classification_summary": {
-            "total": total,
-            "classified": classified,
-            "unknown_pending": unknown_pending,
-            "classified_pct": round(classified / total * 100, 1) if total else 0,
-            "unknown_pending_pct": round(unknown_pending / total * 100, 1) if total else 0,
-        },
+        "inventory_progress": inventory_progress,
         "verification_over_time": verification_over_time,
         "outreach_outcomes_over_time": {
             "series": grps_sorted,

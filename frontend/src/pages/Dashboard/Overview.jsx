@@ -76,10 +76,7 @@ export default function Overview() {
 
   const classification = data.classification || {}
   const total = data.total_properties || 0
-  const verifiedCount = Object.entries(classification)
-    .filter(([k]) => k.startsWith('Verified'))
-    .reduce((sum, [, v]) => sum + v, 0)
-  const verifiedPct = total > 0 ? ((verifiedCount / total) * 100).toFixed(1) : '0.0'
+  const ip = data.inventory_progress || {}
 
   const orderedStatuses = ['Verified-Lead', 'Verified-Copper', 'Verified-Galvanized', 'Unknown', 'Pending']
   const segments = orderedStatuses
@@ -135,19 +132,68 @@ export default function Overview() {
 
   return (
     <PageReveal className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Headline figure — provisional, pending water department confirmation */}
+      {/* Inventory progress — two measures until the department defines "classification" */}
       <RevealItem>
-        <div className="mb-2">
-          <div className="flex items-baseline gap-3">
-            <span className="text-5xl font-bold tabular-nums tracking-tight text-slate-900">
-              {verifiedPct}%
-            </span>
-            <span className="text-lg text-muted-foreground font-medium">verified</span>
-          </div>
-          <p className="text-sm text-muted-foreground mt-1">
-            {verifiedCount.toLocaleString()} of {total.toLocaleString()} properties classified
-          </p>
-        </div>
+        <Card>
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Material on Record</h3>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-900">
+                    {ip.material_on_record_pct ?? 0}%
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${ip.material_on_record_pct ?? 0}%`, background: '#1A56A0' }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  <span className="font-semibold tabular-nums text-slate-700">
+                    {(ip.material_on_record ?? 0).toLocaleString()}
+                  </span>{' '}
+                  of {(ip.total ?? 0).toLocaleString()} properties
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Both sides have a known material from any source
+                </p>
+              </div>
+              <div>
+                <h3 className="text-sm font-medium text-muted-foreground">Verified by Field Inspection</h3>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-900">
+                    {ip.field_verified_pct ?? 0}%
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+                  <div
+                    className="h-full rounded-full transition-all duration-700"
+                    style={{ width: `${ip.field_verified_pct ?? 0}%`, background: '#16A34A' }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  <span className="font-semibold tabular-nums text-slate-700">
+                    {(ip.field_verified ?? 0).toLocaleString()}
+                  </span>{' '}
+                  of {(ip.total ?? 0).toLocaleString()} properties
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Material confirmed through this system's field visits
+                </p>
+              </div>
+            </div>
+            {(ip.material_on_record ?? 0) > (ip.field_verified ?? 0) && (
+              <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
+                <span className="font-semibold tabular-nums text-slate-700">
+                  {((ip.material_on_record ?? 0) - (ip.field_verified ?? 0)).toLocaleString()}
+                </span>{' '}
+                properties have material records but have not been field verified
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </RevealItem>
 
       {/* Action row */}
@@ -178,11 +224,11 @@ export default function Overview() {
         </div>
       </RevealItem>
 
-      {/* Classification progress */}
+      {/* Verification status breakdown */}
       <RevealItem>
         <Card>
           <CardContent className="p-5">
-            <h2 className={typeScale.sectionTitle + ' mb-4'}>Classification Progress</h2>
+            <h2 className={typeScale.sectionTitle + ' mb-4'}>Verification Status</h2>
             <div className="flex h-5 rounded-full overflow-hidden bg-slate-100">
               {segments.map((seg) => (
                 <button

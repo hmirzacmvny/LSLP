@@ -25,6 +25,10 @@ const MATERIAL_COLORS = {
   Lead: colors.lead,
   Copper: colors.copper,
   Galvanized: colors.galvanized,
+  'Cast Iron': '#7C3AED',
+  Iron: '#A855F7',
+  Brass: '#CA8A04',
+  Plastic: '#0891B2',
   Unknown: colors.unknown,
   Other: '#8B5CF6',
 }
@@ -92,6 +96,10 @@ function FilterBar({ filters, onChange, onClear }) {
                 <SelectItem value="Lead">Lead</SelectItem>
                 <SelectItem value="Copper">Copper</SelectItem>
                 <SelectItem value="Galvanized">Galvanized</SelectItem>
+                <SelectItem value="Cast Iron">Cast Iron</SelectItem>
+                <SelectItem value="Iron">Iron</SelectItem>
+                <SelectItem value="Brass">Brass</SelectItem>
+                <SelectItem value="Plastic">Plastic</SelectItem>
                 <SelectItem value="Unknown">Unknown</SelectItem>
                 <SelectItem value="Other">Other</SelectItem>
               </SelectContent>
@@ -177,43 +185,68 @@ function EmptyChart({ label }) {
   )
 }
 
-function ClassificationHeadline({ data }) {
+function InventoryProgress({ data }) {
   if (!data) return null
-  const { total, classified, unknown_pending, classified_pct } = data
-  const pct = classified_pct || 0
+  const { total, material_on_record, material_on_record_pct, field_verified, field_verified_pct } = data
+  const gap = material_on_record - field_verified
+
   return (
     <Card>
       <CardContent className="p-6">
-        <h3 className={typeScale.sectionTitle}>Classification Progress</h3>
-        <p className="text-xs text-muted-foreground mt-0.5 mb-4">
-          Properties with both house side and street side material identified
-        </p>
-        <div className="flex items-end gap-3 mb-3">
-          <span className="text-5xl font-bold tabular-nums tracking-tight text-slate-800">
-            {pct}%
-          </span>
-          <span className="text-sm text-muted-foreground pb-1.5">classified</span>
-        </div>
-        <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden mb-3">
-          <div
-            className="h-full rounded-full transition-all duration-700"
-            style={{ width: `${pct}%`, background: colors.civic }}
-          />
-        </div>
-        <div className="flex gap-6 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div>
-            <span className="font-semibold tabular-nums">{classified.toLocaleString()}</span>
-            <span className="text-muted-foreground ml-1">classified</span>
+            <h3 className="text-sm font-medium text-muted-foreground">Material on Record</h3>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-800">
+                {material_on_record_pct}%
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${material_on_record_pct}%`, background: colors.civic }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1.5">
+              <span className="font-semibold tabular-nums text-slate-700">
+                {material_on_record.toLocaleString()}
+              </span>{' '}
+              of {total.toLocaleString()} properties
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Both sides have a known material from any source
+            </p>
           </div>
           <div>
-            <span className="font-semibold tabular-nums">{unknown_pending.toLocaleString()}</span>
-            <span className="text-muted-foreground ml-1">unknown / pending</span>
-          </div>
-          <div>
-            <span className="font-semibold tabular-nums">{total.toLocaleString()}</span>
-            <span className="text-muted-foreground ml-1">total</span>
+            <h3 className="text-sm font-medium text-muted-foreground">Verified by Field Inspection</h3>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-800">
+                {field_verified_pct}%
+              </span>
+            </div>
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${field_verified_pct}%`, background: '#16A34A' }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1.5">
+              <span className="font-semibold tabular-nums text-slate-700">
+                {field_verified.toLocaleString()}
+              </span>{' '}
+              of {total.toLocaleString()} properties
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Material confirmed through this system's field visits
+            </p>
           </div>
         </div>
+        {gap > 0 && (
+          <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
+            <span className="font-semibold tabular-nums text-slate-700">{gap.toLocaleString()}</span>{' '}
+            properties have material records but have not been field verified
+          </div>
+        )}
       </CardContent>
     </Card>
   )
@@ -491,10 +524,10 @@ function exportCSV(data, filters) {
   lines.push(`Filters: ${activeFilters || 'none'}`)
   lines.push('')
 
-  lines.push('--- Classification Summary ---')
-  const cs = data.classification_summary
-  lines.push('Total,Classified,Unknown/Pending,Classified %')
-  lines.push(`${cs.total},${cs.classified},${cs.unknown_pending},${cs.classified_pct}%`)
+  lines.push('--- Inventory Progress ---')
+  const ip = data.inventory_progress
+  lines.push('Total,Material on Record,Material on Record %,Field Verified,Field Verified %')
+  lines.push(`${ip.total},${ip.material_on_record},${ip.material_on_record_pct}%,${ip.field_verified},${ip.field_verified_pct}%`)
   lines.push('')
 
   lines.push('--- Material Distribution ---')
@@ -630,7 +663,7 @@ export default function Analytics() {
       ) : data ? (
         <div className="space-y-4">
           <RevealItem>
-            <ClassificationHeadline data={data.classification_summary} />
+            <InventoryProgress data={data.inventory_progress} />
           </RevealItem>
 
           <RevealItem>

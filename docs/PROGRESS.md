@@ -75,7 +75,7 @@ Historical naive timestamps were stored as Eastern local time; PostgreSQL conver
 | `main.py` | FastAPI app, CORS, router registration | ✅ Complete |
 | `.env` | DB creds + Firebase project ID | ✅ Created (NOT committed) |
 | `.env.example` | Template showing all required keys | ✅ Created |
-| `import_data.py` | One-time CSV → PostgreSQL import script | ✅ Executed successfully |
+| `import_data.py` | One-time CSV → PostgreSQL import script; normalizes materials + verification methods on import | ✅ Executed + updated |
 | `requirements.txt` | Python dependencies | ✅ Updated (includes firebase-admin) |
 | `lslp_schema.sql` | Initial table creation SQL | ✅ Executed once via pgAdmin |
 | `alembic.ini` | Alembic config (DB URL set dynamically from .env) | ✅ Configured |
@@ -103,7 +103,7 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 ### `app/schemas/` — Pydantic schemas
 | File | Schemas | Status | Notes |
 |---|---|---|---|
-| `property.py` | `PropertyBase`, `PropertyUpdate`, `PropertyResponse` | ✅ Complete | |
+| `property.py` | `PropertyBase`, `PropertyUpdate`, `PropertyResponse` | ✅ Updated | `PropertyUpdate` validates `verified_status` + 4 verification method columns against canonical sets |
 | `visit.py` | `VisitBase`, `VisitCreate`, `VisitResponse` | ✅ Complete | `model_config = {"from_attributes": True}` on `VisitBase` |
 | `outreach.py` | `OutreachCreate`, `OutreachResponse` | ✅ Updated | `initials` removed from Create (set server-side); `created_by_uid`/`created_by_email` added to Response |
 | `submission.py` | `SubmissionCreate`, `SubmissionResponse`, `SubmissionReview`, `SubmissionCounts` | ✅ Updated | `reviewed_by` removed from `SubmissionReview` (set server-side); `reviewed_by_name` added to Response |
@@ -125,6 +125,7 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 |---|---|---|
 | `storage.py` | Local file storage for photos (`save_photo`, `delete_photo`) | ✅ Complete |
 | `auth.py` | Firebase JWT verification via public JWKS + role enforcement | ✅ Complete (Phase 2.1) |
+| `classification.py` | Shared inventory progress metrics + canonical value sets (`VALID_MATERIALS`, `VALID_VERIFIED_STATUSES`, `VALID_VERIFICATION_METHODS`) | ✅ Updated |
 
 ### `alembic/`
 | File | Purpose | Status |
@@ -204,10 +205,10 @@ recharts
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
 |---|---|---|
-| `Overview.jsx` | Office staff landing page — actionable metrics, classification progress bar, activity feed, field trend | ✅ New |
+| `Overview.jsx` | Office staff landing page — inventory progress (material on record + field verified), verification status bar, action cards, activity feed, field trend | ✅ Updated |
 | `PropertiesList.jsx` | Search with shadcn Input/Table/Badge/Skeleton, design tokens, URL filter params (`verified_status`, `stalled`, `untouched`) with dismissible chips | ✅ Updated |
 | `PropertyDetail.jsx` | Card with blue accent border, 2x2 material grid with color-coded borders, shadcn Tabs/Table/Badge/Skeleton | ✅ Redesigned (shadcn) |
-| `Analytics.jsx` | Compliance analytics page — classification headline, material pairings heatmap, distribution bars, verification/outreach time series, CSV export, deferred metrics placeholder | ✅ New |
+| `Analytics.jsx` | Compliance analytics page — inventory progress (material on record + field verified), material pairings heatmap, distribution bars, verification/outreach time series, CSV export, deferred metrics placeholder | ✅ Updated |
 | `NewVisit.jsx` | shadcn Card form, tap-button selectors for Access/Outcome, dashed photo upload area, validation + offline | ✅ Redesigned (shadcn) |
 | `NewOutreach.jsx` | shadcn Card form, read-only identity card (replaces initials input), customer-initiated section, validation | ✅ Updated |
 
@@ -462,7 +463,7 @@ Portal API key header: `X-Portal-API-Key: lslp-portal-2026` — add `PORTAL_API_
 A staff user can today, from the web dashboard:
 
 1. **Sign in** with email/password via Firebase Auth — unauthenticated users are redirected to `/login`
-2. **See the Overview dashboard** (`/`) — actionable metric cards (pending submissions, stalled outreach, untouched properties), classification progress bar, recent activity feed, field activity trend. Every number is clickable and routes to the filtered records it represents.
+2. **See the Overview dashboard** (`/`) — inventory progress (material on record + field verified side by side with gap callout), actionable metric cards (pending submissions, stalled outreach, untouched properties), verification status bar, recent activity feed, field activity trend. Every number is clickable and routes to the filtered records it represents.
 3. Search the full 10,475-property list by address or account number (now at `/properties`)
 4. Click into any property and see its full classification, history of visits, and history of outreach
 5. Log a new field visit (with optional photos uploaded to local storage)
@@ -470,7 +471,7 @@ A staff user can today, from the web dashboard:
 7. From a property page, click **Log Visit** or **Log Outreach** and have the account number pre-filled
 8. **Review customer submissions** — view pending submissions, inspect photos in a lightbox, approve with material classification (updates property record + audit log), or reject with optional reason
 9. **Navbar shows pending submission count** — amber badge on the Submissions nav item
-10. **View compliance analytics** (`/analytics`) — classification progress headline, material pairings heatmap (public × private side), material distribution bars, verification over time, outreach outcomes over time (stacked area), outreach reach (distinct properties vs total attempts). Filters: date range, material, verification status, outreach outcome — applied uniformly across all datasets. CSV export of current filtered data. Deferred: replacement tracking and priority filter (see `docs/ANALYTICS_GAPS.md`).
+10. **View compliance analytics** (`/analytics`) — inventory progress (material on record + field verified, shared computation with dashboard), material pairings heatmap (public × private side), material distribution bars, verification over time, outreach outcomes over time (stacked area), outreach reach (distinct properties vs total attempts). Filters: date range, material, verification status, outreach outcome — applied uniformly across all datasets. CSV export of current filtered data. Deferred: replacement tracking and priority filter (see `docs/ANALYTICS_GAPS.md`).
 
 Role enforcement is active:
 - `field_crew` — can access `/field` and `/account` only; can POST visits and search properties. Navbar shows only "Field App."
@@ -572,6 +573,8 @@ ALTER TABLE visits ADD COLUMN created_by_uid VARCHAR(128);
 - 🔲 **No Metabase.** Phase 3.
 - 🔲 **No tests.** Phase 3 nice-to-have.
 - 🔲 **outreach_log attempt_number edge case** — untested beyond 4 attempts (imported data max). Should work fine but worth a manual test before relying on it.
+- 🔲 **Data normalization SQL** — casing variants in `hs_service`, `ss_service`, verification method columns, plus stray "string" values in 5 columns. UPDATE statements ready in `scratchpad/normalize_data.sql` (~432 property rows + 1 outreach row). CHECK constraints ready in `scratchpad/check_constraints.sql` — run after normalization. Import script (`import_data.py`) already normalizes on import; PATCH endpoint (`property.py`) validates against canonical sets.
+- 🔲 **3 remaining TIMESTAMPTZ columns** — `properties.created_at`, `properties.updated_at`, `properties.springbrook_synced_at` still need `ALTER TABLE`.
 
 ---
 

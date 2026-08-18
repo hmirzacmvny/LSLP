@@ -294,6 +294,7 @@ The survey grid spacing (48px) was chosen because it references engineering grap
 - ✅ When stuck, ask before guessing — wrong guesses cost more time than asking
 - ✅ When the schema changes, update `PROGRESS.md` and `ROADMAP.md`
 - ✅ When adding a new protected endpoint, apply `Depends(verify_firebase_token)` for any-auth or `Depends(require_role([...]))` for role-restricted access
+- ✅ When creating a new router module in `app/api/`, add the `include_router` call to `main.py` in the same change, then confirm the endpoint appears at `http://127.0.0.1:8000/docs` before the work is considered done. An unmounted router returns a clean 404 with no log output — it fails silently.
 
 **Dashboard metrics:**
 Every number on the Overview dashboard must be clickable and must route to a filtered list whose row count matches the number on the card. If a dashboard aggregate query changes, the corresponding filter on `GET /api/properties/` must use identical logic so the counts always agree. The in-app dashboard does not replace the planned Phase 3.6 Metabase work.
@@ -321,6 +322,15 @@ Role display names come from a single mapping in `design-system.js` (`roleConfig
 
 **Analytics gaps:**
 Replacement tracking and property priority are deferred — neither the data nor the data sources exist today. See `docs/ANALYTICS_GAPS.md` for the specification. Do not build placeholder charts; use an explanatory card instead.
+
+**Shared metrics:**
+Any metric that appears on more than one page must be computed in exactly one place on the backend. Both the overview dashboard and analytics page consume `compute_inventory_progress()` from `app/services/classification.py`, which returns both "material on record" (both sides have a real material from any source) and "field verified" (verified_status is Verified-Lead/Copper/Galvanized). Never duplicate this logic in a second endpoint or on the frontend.
+
+**Constrained field validation:**
+Compliance-critical fields with a defined set of valid values must validate server-side against that set. `PATCH /api/properties/` rejects invalid values for `verified_status` (against `VALID_VERIFIED_STATUSES`) and all four verification method columns (against `VALID_VERIFICATION_METHODS`), both defined in `app/services/classification.py`. Material columns (`hs_service`, `ss_service`) are not writable via API — they come from the CSV import, which normalizes via `clean_material()` in `import_data.py`.
+
+**Data normalization:**
+All text values in constrained columns use Title Case as canonical. The canonical sets for materials (`VALID_MATERIALS`) and verification methods (`VALID_VERIFICATION_METHODS`) live in `app/services/classification.py`. The import script normalizes via lookup maps (`_MATERIAL_CANONICAL`, `_VERIFICATION_METHOD_CANONICAL`) in `import_data.py`. Values not in the map pass through unchanged. Iron and Cast Iron are distinct materials — never merge them. If a re-import is needed, the import script handles normalization; manual SQL cleanup should not be necessary again.
 
 ---
 
