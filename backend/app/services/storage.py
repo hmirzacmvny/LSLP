@@ -36,8 +36,8 @@ def save_photo(file: UploadFile, folder: str, account_number: str) -> str:
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    # Return a clean path string
-    return file_path.replace("\\", "/")
+    # Return path relative to uploads root for portability
+    return os.path.relpath(file_path, UPLOAD_BASE).replace("\\", "/")
 
 
 def delete_photo(file_path: str) -> bool:
@@ -46,8 +46,9 @@ def delete_photo(file_path: str) -> bool:
     When migrating to Firebase, replace this to delete from bucket instead.
     """
     try:
-        if os.path.exists(file_path):
-            os.remove(file_path)
+        full = file_path if os.path.isabs(file_path) else os.path.join(UPLOAD_BASE, file_path)
+        if os.path.exists(full):
+            os.remove(full)
             return True
         return False
     except Exception:

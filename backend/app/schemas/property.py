@@ -54,5 +54,7 @@ class PropertyUpdate(BaseModel):
 class PropertyResponse(PropertyBase):
     created_at: Optional[datetime] = None
     updated_at: Optional[datetime] = None
+    priority: Optional[int] = None
+    priority_label: Optional[str] = None
 
     model_config = {"from_attributes": True}

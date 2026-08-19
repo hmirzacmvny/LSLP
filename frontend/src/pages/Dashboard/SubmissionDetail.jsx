@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { getSubmission, getProperty, reviewSubmission } from '../../lib/api'
 import { getMaterial, typeScale } from '../../lib/design-system'
 import { toast } from 'sonner'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
+import PhotoGrid from '../../components/PhotoGrid'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,10 +15,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import {
-  ArrowLeft, Image, ChevronLeft, ChevronRight, CheckCircle, XCircle, AlertTriangle,
+  ArrowLeft, Image, CheckCircle, XCircle, AlertTriangle,
 } from 'lucide-react'
-
-const API_BASE = 'http://127.0.0.1:8000'
 
 const MATERIALS = [
   { value: 'Lead', label: 'Lead', cls: 'bg-red-600 hover:bg-red-700 text-white' },
@@ -39,8 +38,6 @@ export default function SubmissionDetail() {
   const [submission, setSubmission] = useState(null)
   const [property, setProperty] = useState(null)
   const [loading, setLoading] = useState(true)
-
-  const [lightboxIdx, setLightboxIdx] = useState(-1)
 
   const [approveOpen, setApproveOpen] = useState(false)
   const [selectedMaterial, setSelectedMaterial] = useState('')
@@ -65,24 +62,6 @@ export default function SubmissionDetail() {
     }
     load()
   }, [id])
-
-  const handleKeyDown = useCallback((e) => {
-    if (lightboxIdx < 0 || !submission?.photo_urls) return
-    if (e.key === 'ArrowRight') {
-      setLightboxIdx((i) => Math.min(i + 1, submission.photo_urls.length - 1))
-    } else if (e.key === 'ArrowLeft') {
-      setLightboxIdx((i) => Math.max(i - 1, 0))
-    } else if (e.key === 'Escape') {
-      setLightboxIdx(-1)
-    }
-  }, [lightboxIdx, submission])
-
-  useEffect(() => {
-    if (lightboxIdx >= 0) {
-      window.addEventListener('keydown', handleKeyDown)
-      return () => window.removeEventListener('keydown', handleKeyDown)
-    }
-  }, [lightboxIdx, handleKeyDown])
 
   const handleApprove = async () => {
     if (!selectedMaterial) return
@@ -178,21 +157,7 @@ export default function SubmissionDetail() {
                 <p>No photos were submitted</p>
               </div>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {photos.map((url, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setLightboxIdx(idx)}
-                    className="aspect-square rounded-lg overflow-hidden border border-border hover:ring-2 hover:ring-[#1A56A0]/30 transition-shadow"
-                  >
-                    <img
-                      src={`${API_BASE}/${url}`}
-                      alt={`Submission photo ${idx + 1}`}
-                      className="w-full h-full object-cover"
-                    />
-                  </button>
-                ))}
-              </div>
+              <PhotoGrid urls={photos} alt="Submission photo" />
             )}
           </CardContent>
         </Card>
@@ -338,40 +303,6 @@ export default function SubmissionDetail() {
           </div>
         </RevealItem>
       )}
-
-      {/* Lightbox */}
-      <Dialog open={lightboxIdx >= 0} onOpenChange={(open) => { if (!open) setLightboxIdx(-1) }}>
-        <DialogContent className="sm:max-w-3xl p-2" showCloseButton={false}>
-          {lightboxIdx >= 0 && photos[lightboxIdx] && (
-            <div className="relative">
-              <img
-                src={`${API_BASE}/${photos[lightboxIdx]}`}
-                alt={`Photo ${lightboxIdx + 1} of ${photos.length}`}
-                className="w-full max-h-[70vh] object-contain rounded-lg"
-              />
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 bg-black/60 text-white text-xs px-3 py-1 rounded-full tabular-nums">
-                {lightboxIdx + 1} / {photos.length}
-              </div>
-              {lightboxIdx > 0 && (
-                <button
-                  onClick={() => setLightboxIdx(lightboxIdx - 1)}
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors"
-                >
-                  <ChevronLeft className="size-5" />
-                </button>
-              )}
-              {lightboxIdx < photos.length - 1 && (
-                <button
-                  onClick={() => setLightboxIdx(lightboxIdx + 1)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/40 hover:bg-black/60 text-white flex items-center justify-center transition-colors"
-                >
-                  <ChevronRight className="size-5" />
-                </button>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
 
       {/* Approve dialog */}
       <Dialog open={approveOpen} onOpenChange={setApproveOpen}>

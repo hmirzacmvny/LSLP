@@ -1,4 +1,5 @@
 import os
+import re
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -87,17 +88,29 @@ def create_submission(
     db: Session = Depends(get_db),
     _=Depends(_verify_portal_key),
 ):
-    import re
+    def _normalize_phone(raw: str) -> str:
+        digits = re.sub(r"[^\d]", "", raw)
+        if len(digits) == 11 and digits.startswith("1"):
+            digits = digits[1:]
+        return digits
 
     errors = []
     trimmed_name = submitter_name.strip()
     trimmed_contact = contact_info.strip()
+    is_email = False
+    phone_digits = ""
     if len(trimmed_name) < 2:
         errors.append("submitter_name must be at least 2 characters")
     if not trimmed_contact:
         errors.append("contact_info is required")
-    elif not re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", trimmed_contact) and len(re.sub(r"[\s()\-+.]", "", trimmed_contact)) < 7:
-        errors.append("contact_info must be a valid email or phone number")
+    else:
+        is_email = bool(re.match(r"^[^\s@]+@[^\s@]+\.[^\s@]+$", trimmed_contact))
+        phone_digits = _normalize_phone(trimmed_contact)
+        is_phone = bool(re.match(r"^\d{10}$", phone_digits))
+        if not is_email and not is_phone:
+            errors.append(
+                "contact_info must be a valid email address or a 10-digit US phone number"
+            )
     if prior_line_work is None:
         errors.append("prior_line_work is required")
     if errors:
@@ -123,7 +136,7 @@ def create_submission(
     submission = CustomerSubmission(
         account_number=account_number,
         submitter_name=submitter_name,
-        contact_info=contact_info,
+        contact_info=trimmed_contact if is_email else phone_digits,
         year_constructed=year_constructed,
         prior_line_work=prior_line_work,
         prior_line_notes=prior_line_notes if prior_line_work else None,

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import text
 from app.database import get_db
 from app.services.auth import require_role
-from app.services.classification import compute_inventory_progress
+from app.services.classification import compute_inventory_progress, _PRIORITY_SQL, PRIORITY_LABELS
 
 router = APIRouter()
 
@@ -150,6 +150,13 @@ def get_analytics(
     # --- Inventory Progress (shared with dashboard) ---
     inventory_progress = compute_inventory_progress(db, prop_where, params)
 
+    # --- Priority Distribution ---
+    priority_rows = db.execute(
+        text(f"SELECT ({_PRIORITY_SQL}) AS tier, COUNT(*) AS count "
+             f"FROM properties p WHERE {prop_where} GROUP BY tier ORDER BY tier"),
+        params,
+    ).fetchall()
+
     # --- Time range for continuous series ---
     if date_from and date_to:
         series_from, series_to = date_from, date_to
@@ -234,6 +241,10 @@ def get_analytics(
             "series": grps_sorted,
             "data": outreach_outcomes,
         },
+        "priority_distribution": [
+            {"tier": r.tier, "label": PRIORITY_LABELS.get(r.tier, ''), "count": r.count}
+            for r in priority_rows
+        ],
         "outreach_reach": outreach_reach,
         "filters_applied": {
             "date_from": str(date_from) if date_from else None,

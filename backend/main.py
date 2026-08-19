@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
-from app.api import properties, visits, outreach, submissions, dashboard, users, analytics
+from app.api import properties, visits, outreach, submissions, dashboard, users, analytics, uploads
 from app.api import auth as auth_routes
 
 Base.metadata.create_all(bind=engine)
@@ -33,6 +33,7 @@ app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"]
 app.include_router(auth_routes.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(users.router, prefix="/api/users", tags=["Users"])
 app.include_router(analytics.router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(uploads.router, prefix="/api/uploads", tags=["Uploads"])
 
 @app.get("/")
 def root():

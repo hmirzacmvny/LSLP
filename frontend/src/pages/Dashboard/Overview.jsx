@@ -132,64 +132,61 @@ export default function Overview() {
 
   return (
     <PageReveal className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* Inventory progress — two measures until the department defines "classification" */}
+      {/* Inventory verification headline */}
       <RevealItem>
         <Card>
           <CardContent className="p-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Material on Record</h3>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-900">
-                    {ip.material_on_record_pct ?? 0}%
-                  </span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${ip.material_on_record_pct ?? 0}%`, background: '#1A56A0' }}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1.5">
-                  <span className="font-semibold tabular-nums text-slate-700">
-                    {(ip.material_on_record ?? 0).toLocaleString()}
-                  </span>{' '}
-                  of {(ip.total ?? 0).toLocaleString()} properties
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Both sides have a known material from any source
-                </p>
-              </div>
-              <div>
-                <h3 className="text-sm font-medium text-muted-foreground">Verified by Field Inspection</h3>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-900">
-                    {ip.field_verified_pct ?? 0}%
-                  </span>
-                </div>
-                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-                  <div
-                    className="h-full rounded-full transition-all duration-700"
-                    style={{ width: `${ip.field_verified_pct ?? 0}%`, background: '#16A34A' }}
-                  />
-                </div>
-                <p className="text-sm text-muted-foreground mt-1.5">
-                  <span className="font-semibold tabular-nums text-slate-700">
-                    {(ip.field_verified ?? 0).toLocaleString()}
-                  </span>{' '}
-                  of {(ip.total ?? 0).toLocaleString()} properties
-                </p>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Material confirmed through this system's field visits
-                </p>
-              </div>
+            <h3 className="text-sm font-medium text-muted-foreground">Inventory Verified</h3>
+            <div className="flex items-baseline gap-2 mt-1">
+              <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-900">
+                {ip.verified_pct ?? 0}%
+              </span>
             </div>
-            {(ip.material_on_record ?? 0) > (ip.field_verified ?? 0) && (
-              <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
-                <span className="font-semibold tabular-nums text-slate-700">
-                  {((ip.material_on_record ?? 0) - (ip.field_verified ?? 0)).toLocaleString()}
-                </span>{' '}
-                properties have material records but have not been field verified
+            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+              <div
+                className="h-full rounded-full transition-all duration-700"
+                style={{ width: `${ip.verified_pct ?? 0}%`, background: '#1A56A0' }}
+              />
+            </div>
+            <p className="text-sm text-muted-foreground mt-1.5">
+              <span className="font-semibold tabular-nums text-slate-700">
+                {(ip.verified ?? 0).toLocaleString()}
+              </span>{' '}
+              of {(ip.total ?? 0).toLocaleString()} properties &mdash; both sides have an identified material
+            </p>
+            {ip.method_breakdown && (
+              <div className="mt-4 pt-4 border-t">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Classification Method
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">House side (private)</p>
+                    <div className="space-y-0.5">
+                      {ip.method_breakdown.house_side.slice(0, 5).map((m) => (
+                        <div key={m.method} className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600 truncate">{m.method}</span>
+                          <span className="tabular-nums text-slate-700 font-medium ml-2">
+                            {m.count.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">Street side (public)</p>
+                    <div className="space-y-0.5">
+                      {ip.method_breakdown.street_side.slice(0, 5).map((m) => (
+                        <div key={m.method} className="flex items-center justify-between text-sm">
+                          <span className="text-slate-600 truncate">{m.method}</span>
+                          <span className="tabular-nums text-slate-700 font-medium ml-2">
+                            {m.count.toLocaleString()}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </CardContent>

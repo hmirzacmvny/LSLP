@@ -60,6 +60,19 @@ export function getRoleDisplay(role) {
   return roleConfig[role]?.label || role || 'Staff'
 }
 
+export const priorityConfig = {
+  1: { label: 'P1', full: 'Replace Both Sides – Lead Detected',   color: '#DC2626', badgeCls: 'bg-red-50 text-red-700 border-red-200' },
+  2: { label: 'P2', full: 'Replace One Side – Lead Detected',     color: '#EA580C', badgeCls: 'bg-orange-50 text-orange-700 border-orange-200' },
+  3: { label: 'P3', full: 'Investigate – Lead and Unknown',       color: '#D97706', badgeCls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  4: { label: 'P4', full: 'Verify – Both Unknown',                color: '#CA8A04', badgeCls: 'bg-yellow-50 text-yellow-700 border-yellow-200' },
+  5: { label: 'P5', full: 'Verify – One Unknown and Non-Lead',    color: '#2563EB', badgeCls: 'bg-blue-50 text-blue-700 border-blue-200' },
+  6: { label: 'P6', full: 'No Action – Both Non-Lead',            color: '#16A34A', badgeCls: 'bg-green-50 text-green-700 border-green-200' },
+}
+
+export function getPriority(tier) {
+  return priorityConfig[tier] || priorityConfig[4]
+}
+
 export const typeScale = {
   pageTitle: 'text-2xl font-semibold tracking-tight',
   sectionTitle: 'text-base font-semibold',

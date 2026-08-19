@@ -5,6 +5,7 @@ import { createVisit, getFieldUsers } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
 import { typeScale } from '../../lib/design-system'
+import { isOutcomePermitted } from '../../lib/validation'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -39,6 +40,12 @@ function validate(form) {
   }
   if (!form.access_granted) {
     errs.access_granted = 'Please select an access status'
+  }
+  if (isOutcomePermitted(form.access_granted) && !form.verification_outcome) {
+    errs.verification_outcome = 'Verification outcome is required when access was granted'
+  }
+  if (!isOutcomePermitted(form.access_granted) && form.verification_outcome) {
+    errs.verification_outcome = 'Verification outcome is not permitted when access was not granted'
   }
   if (form.notes.length > 500) {
     errs.notes = 'Notes must be 500 characters or fewer'
@@ -273,9 +280,11 @@ export default function NewVisit() {
                       variant={form.access_granted === opt ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => {
-                        setForm({ ...form, access_granted: opt })
+                        const update = { ...form, access_granted: opt }
+                        if (opt !== 'Yes') update.verification_outcome = ''
+                        setForm(update)
                         if (fieldErrors.access_granted)
-                          setFieldErrors((prev) => ({ ...prev, access_granted: '' }))
+                          setFieldErrors((prev) => ({ ...prev, access_granted: '', verification_outcome: '' }))
                       }}
                       className={
                         form.access_granted === opt
@@ -292,8 +301,11 @@ export default function NewVisit() {
                 )}
               </div>
 
-              <div className="space-y-2">
-                <Label>Verification Outcome</Label>
+              <div className={`space-y-2 ${!isOutcomePermitted(form.access_granted) ? 'opacity-40 pointer-events-none' : ''}`}>
+                <Label>
+                  Verification Outcome{' '}
+                  {isOutcomePermitted(form.access_granted) && <span className="text-red-500">*</span>}
+                </Label>
                 <div className="flex flex-wrap gap-2">
                   {OUTCOME_OPTIONS.map((opt) => (
                     <Button
@@ -301,7 +313,12 @@ export default function NewVisit() {
                       type="button"
                       variant={form.verification_outcome === opt.value ? 'default' : 'outline'}
                       size="sm"
-                      onClick={() => setForm({ ...form, verification_outcome: opt.value })}
+                      disabled={!isOutcomePermitted(form.access_granted)}
+                      onClick={() => {
+                        setForm({ ...form, verification_outcome: opt.value })
+                        if (fieldErrors.verification_outcome)
+                          setFieldErrors((prev) => ({ ...prev, verification_outcome: '' }))
+                      }}
                       className={
                         form.verification_outcome === opt.value ? opt.active : ''
                       }
@@ -310,6 +327,9 @@ export default function NewVisit() {
                     </Button>
                   ))}
                 </div>
+                {fieldErrors.verification_outcome && (
+                  <p className="text-xs text-red-600">{fieldErrors.verification_outcome}</p>
+                )}
               </div>
 
               <div className="space-y-2">

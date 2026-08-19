@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.8 are complete plus analytics page, four fixes, and performer/enterer separation. TIMESTAMPTZ migration done (7/10 columns; 3 properties columns remain). **Next: Phase 2.9 — Phase 2 Wrap-Up.**
+Phases 2.1–2.8 are complete plus analytics page, four fixes, and performer/enterer separation. TIMESTAMPTZ migration done (7/10 columns; 3 properties columns remain). Department decisions recorded in `docs/DEPARTMENT_DECISIONS.md`. Verification metric reframed; priority classification implemented. **Next: Phase 2.9 — Phase 2 Wrap-Up.**
 
 **✅ TIMESTAMPTZ migration — DONE (7 of 10 columns):**
 Migrated 2026-08-17: `visits.visited_at`, `visits.created_at`, `outreach_log.created_at`, `customer_submissions.submitted_at`, `customer_submissions.reviewed_at`, `audit_log.changed_at`, `users.created_at`. Historical naive timestamps were correctly interpreted as server-local Eastern time and converted to UTC internally by PostgreSQL.
@@ -176,6 +176,24 @@ Pre-phase hygiene tasks — all complete:
 - [ ] Add a manual trigger endpoint: `POST /api/export/springbrook` (admin only)
 - [ ] **First step: confirm with the program manager exactly what CSV format Springbrook accepts**
 
+### 3.2b Inbound Springbrook Reconciliation (blocked — needs department input)
+
+The outbound nightly export (3.2) sends locally-changed data to Springbrook. This is the inverse: pulling Springbrook's current state back to detect what changed on their side since the August 2026 one-time import. Without it, local data diverges further from Springbrook every day — new connections, closed accounts, address corrections, and records-based classifications happening in Springbrook are invisible to this system.
+
+The hard part is not the import mechanics but the conflict policy. When a fresh Springbrook export disagrees with local data, something has to decide which value wins. Three conflict classes exist:
+
+1. **Field verification vs. records-based classification.** A property verified as Lead through excavation in this system may carry a different classification in Springbrook based on records. The plausible default is that physical verification outranks records regardless of date, but this is a compliance policy decision belonging to the water department — adopting it unilaterally risks silently overwriting field verifications if the rule is wrong, which is a serious failure in an auditable system.
+2. **Properties present in one source but not the other.** A new connection in Springbrook should create a local record. A property that exists locally but disappeared from Springbrook may have been merged, deactivated, or re-numbered — deleting or deactivating it requires knowing why it vanished.
+3. **Non-verification fields changed on both sides.** Address corrections, account status changes, and method column updates may have happened in Springbrook while office staff made different changes locally. A last-write-wins policy works for some fields (address) but not others (verification method).
+
+**Open questions for the department:**
+- Does Springbrook have an API, or only manual CSV exports?
+- How frequently can a fresh export be provided? (Daily, weekly, on-demand?)
+- Is the export format stable, or does it change between Springbrook versions?
+- What are the precedence rules? Specifically: does a field verification performed through this system always outrank a records-based classification from Springbrook?
+
+Nothing should be built until the precedence rules are defined. Getting the merge policy wrong is worse than having no merge at all, because silent overwrites corrupt the audit trail.
+
 ### 3.3 Brightly Auto Work Orders (1 week)
 - [ ] Create `app/services/brightly.py` with `create_work_order(visit)` function
 - [ ] After every successful `POST /api/visits/`, if `access_granted == "Yes"` and `verification_outcome != "Inaccessible"`, call `create_work_order`
@@ -191,6 +209,10 @@ Pre-phase hygiene tasks — all complete:
 - [ ] **Versioned** — `/v1/` in the path. Never change the response shape without bumping to `/v2/`
 - [ ] Add authentication: ArcGIS pipeline gets a dedicated API key (separate from portal key)
 - [ ] Hand the endpoint URL + key to whoever maintains the existing ArcGIS integration
+
+### 3.4b Verification Metric Definition ✅ RESOLVED (2026-08-19)
+
+The department decided: a property is verified once both sides have an identified material. Records-based classification counts. The prior two-metric framing ("Material on Record" vs "Verified by Field Inspection") has been replaced with a single "Inventory Verified" headline (17.0%, 1,778 properties). Verification methods are shown as a separate breakdown. See `docs/DEPARTMENT_DECISIONS.md` §1.
 
 ### 3.5 Audit Log Triggers (3 days)
 - [ ] Write a PostgreSQL trigger function `log_changes()`
@@ -283,4 +305,6 @@ When ready to move off `localhost`:
 
 - `CLAUDE.md` — how Claude Code should work on this project
 - `PROGRESS.md` — what's currently built
+- `DEPARTMENT_DECISIONS.md` — department design decisions and their implications
+- `ANALYTICS_GAPS.md` — deferred metrics that need external data
 - This file — what's next

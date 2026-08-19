@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/select'
 import { Search, Camera, CheckCircle, AlertCircle, X, Check } from 'lucide-react'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
+import { isValidEmail, isValidPhone } from '../../lib/validation'
 
 const API_BASE = 'http://127.0.0.1:8000'
 const PORTAL_API_KEY = import.meta.env.VITE_PORTAL_API_KEY || 'lslp-portal-2026'
@@ -145,9 +146,6 @@ export default function SubmitForm() {
     setPhotoPreviewURLs(updated.map((f) => URL.createObjectURL(f)))
   }
 
-  const isValidEmail = (v) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)
-  const isValidPhone = (v) => v.replace(/[\s()\-+.]/g, '').length >= 7
-
   const handleStep2Next = () => {
     const errors = {}
     const trimmedName = name.trim()
@@ -156,7 +154,7 @@ export default function SubmitForm() {
     else if (trimmedName.length < 2) errors.name = 'Name must be at least 2 characters.'
     if (!trimmedContact) errors.contact = 'Phone number or email is required.'
     else if (!isValidEmail(trimmedContact) && !isValidPhone(trimmedContact))
-      errors.contact = 'Enter a valid email address or phone number.'
+      errors.contact = 'Enter a phone number like 914-555-0100 or an email address'
     if (priorLineWork === null) errors.priorLineWork = 'Please select an option.'
     setFieldErrors(errors)
     if (Object.keys(errors).length > 0) return

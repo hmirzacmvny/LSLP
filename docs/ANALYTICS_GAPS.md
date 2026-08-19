@@ -1,6 +1,8 @@
 # Analytics Gaps — Deferred Metrics
 
-Three metrics requested by the water department cannot be built today because the underlying data does not exist anywhere in the system or outside it. This document specifies what would need to exist for each, so whoever implements them later has a clear starting point.
+Metrics requested by the water department that cannot be built today because the underlying data does not exist. This document specifies what would need to exist for each, so whoever implements them later has a clear starting point.
+
+> **Resolved:** Property priority classification (formerly §2) is now implemented — see `classification.py` and `docs/DEPARTMENT_DECISIONS.md` §8. The verification metric (formerly §4) has been reframed per department decision — see `docs/DEPARTMENT_DECISIONS.md` §1.
 
 ---
 
@@ -47,25 +49,26 @@ Once replacement data exists:
 
 ---
 
-## 2. Property Priority
+## 2. Inbound Springbrook Reconciliation
 
-The department asked for a priority filter on analytics.
+The analytics page and overview dashboard both consume a one-time August 2026 snapshot of Springbrook data. There is no mechanism to pull Springbrook's current state, so every material classification, new connection, and address correction happening in Springbrook since that snapshot is invisible to this system. The local data diverges further every day.
 
-Priority needs a definition before it can be implemented. Whether a property is "priority" could derive from:
-- **Material classification**: all verified-Lead properties are priority
-- **Property type**: multi-family or commercial properties serving more people
-- **Proximity to sensitive locations**: schools, childcare facilities, hospitals
-- **Age of construction**: pre-1986 buildings more likely to have lead
-- **Combination**: a scoring model weighting several factors
+### Why this is not just the reverse of the outbound export
 
-The department should decide which definition they want. Once defined, priority can be stored as a column on `properties` (either a boolean `is_priority` or a numeric `priority_score`) and used as a filter across all analytics datasets.
+Phase 3.2 plans a nightly outbound export: pushing locally-changed data to Springbrook. The inbound direction is harder because it requires a conflict policy. When a fresh Springbrook export says a property is Copper but this system's field crew verified it as Lead through excavation, the system must decide which value wins — and the wrong decision silently overwrites an auditable field verification.
 
-If priority derives purely from existing data (e.g., "all Lead properties are priority"), it can be computed rather than stored. If it requires external data (school proximity, construction year), that data needs to be imported first.
+### What blocks it
+
+The conflict policy is a compliance decision, not a technical one. The plausible default is that physical verification outranks records regardless of date, but the water department must confirm this. Open questions documented in `ROADMAP.md` under Phase 3.2b: whether Springbrook has an API, export frequency, format stability, and precedence rules.
+
+### Impact on analytics
+
+Until reconciliation exists, material distribution and pairings matrix reflect the August snapshot only. Properties connected or reclassified in Springbrook since then are missing or stale. The total count (10,475) may no longer match Springbrook's live count.
 
 ---
 
 ## Implementation notes
 
-- Neither replacements nor priority should block the analytics page. The page is useful today with the data it has.
+- Replacement tracking should not block the analytics page. The page is useful today with the data it has.
 - The replacement table should be created as part of Phase 3.3 (Brightly integration), not as a standalone migration.
-- The placeholder cards on the analytics page reference this document. Remove them when the features ship.
+- The replacement placeholder card on the analytics page references this document. Remove it when the feature ships.

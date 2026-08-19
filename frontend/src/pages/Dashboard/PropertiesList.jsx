@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { getProperties } from '../../lib/api'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { getMaterial, getStatus, typeScale } from '../../lib/design-system'
+import { getMaterial, getStatus, getPriority, priorityConfig, typeScale } from '../../lib/design-system'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -20,6 +20,7 @@ const FILTER_LABELS = {
   verified_status: (v) => `Status: ${v}`,
   stalled: () => 'Stalled outreach (4+ attempts, unresolved)',
   untouched: () => 'Never touched (no visits or outreach)',
+  priority: (v) => `Priority: P${v} – ${priorityConfig[v]?.full || ''}`,
 }
 
 export default function PropertiesList() {
@@ -133,9 +134,11 @@ export default function PropertiesList() {
     const vs = searchParams.get('verified_status')
     const st = searchParams.get('stalled')
     const ut = searchParams.get('untouched')
+    const pr = searchParams.get('priority')
     if (vs) params.verified_status = vs
     if (st) params.stalled = st
     if (ut) params.untouched = ut
+    if (pr) params.priority = pr
     if (Object.keys(params).length > 0) {
       setLoading(true)
       setSearched(true)
@@ -148,7 +151,7 @@ export default function PropertiesList() {
   }, [searchParams])
 
   const activeFilters = []
-  for (const key of ['verified_status', 'stalled', 'untouched']) {
+  for (const key of ['verified_status', 'stalled', 'untouched', 'priority']) {
     const val = searchParams.get(key)
     if (val) activeFilters.push({ key, value: val })
   }
@@ -237,6 +240,25 @@ export default function PropertiesList() {
               </div>
             )}
           </div>
+          <Select
+            value={searchParams.get('priority') || '__all__'}
+            onValueChange={(v) => {
+              const next = new URLSearchParams(searchParams)
+              if (v === '__all__') next.delete('priority')
+              else next.set('priority', v)
+              setSearchParams(next)
+            }}
+          >
+            <SelectTrigger className="h-11 w-[140px] text-sm shrink-0">
+              <SelectValue placeholder="Priority" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All priorities</SelectItem>
+              {[1, 2, 3, 4, 5, 6].map((t) => (
+                <SelectItem key={t} value={String(t)}>P{t}: {priorityConfig[t]?.full.split(' – ')[0]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Button
             onClick={() => doSearch(search)}
             disabled={loading}
@@ -327,6 +349,7 @@ export default function PropertiesList() {
                         <TableHead className="text-xs font-medium">House Side</TableHead>
                         <TableHead className="text-xs font-medium">Street Side</TableHead>
                         <TableHead className="text-xs font-medium">Status</TableHead>
+                        <TableHead className="text-xs font-medium">Priority</TableHead>
                         <TableHead className="text-xs font-medium">Account Type</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -351,6 +374,17 @@ export default function PropertiesList() {
                             <Badge variant="outline" className={`text-xs ${getStatus(prop.verified_status).badgeCls}`}>
                               {prop.verified_status || 'Pending'}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {prop.priority && (
+                              <Badge
+                                variant="outline"
+                                className={`text-xs ${getPriority(prop.priority).badgeCls}`}
+                                title={getPriority(prop.priority).full}
+                              >
+                                {getPriority(prop.priority).label}
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-muted-foreground">{prop.ub_account_type || '—'}</TableCell>
                         </TableRow>

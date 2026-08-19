@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, or_, and_
 from typing import Optional
 from app.database import get_db
 from app.models.property import Property
@@ -11,6 +11,7 @@ from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.property import PropertyResponse, PropertyUpdate
 from app.services.auth import verify_firebase_token, require_role
+from app.services.classification import compute_priority, PRIORITY_LABELS
 
 router = APIRouter()
 
@@ -23,6 +24,7 @@ def get_properties(
     search: Optional[str] = Query(None),
     stalled: Optional[bool] = Query(None),
     untouched: Optional[bool] = Query(None),
+    priority: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(verify_firebase_token),
 ):
@@ -58,7 +60,30 @@ def get_properties(
             ),
         )
 
-    return query.offset(skip).limit(limit).all()
+    if priority is not None:
+        hs_lead = Property.hs_service == 'Lead'
+        ss_lead = Property.ss_service == 'Lead'
+        hs_unk = or_(Property.hs_service == None, Property.hs_service.in_(['Unknown', '']))
+        ss_unk = or_(Property.ss_service == None, Property.ss_service.in_(['Unknown', '']))
+        hs_nl = and_(Property.hs_service != None, ~Property.hs_service.in_(['Lead', 'Unknown', '']))
+        ss_nl = and_(Property.ss_service != None, ~Property.ss_service.in_(['Lead', 'Unknown', '']))
+        tier_map = {
+            1: and_(hs_lead, ss_lead),
+            2: or_(and_(hs_lead, ss_nl), and_(hs_nl, ss_lead)),
+            3: or_(and_(hs_lead, ss_unk), and_(hs_unk, ss_lead)),
+            4: and_(hs_unk, ss_unk),
+            5: or_(and_(hs_unk, ss_nl), and_(hs_nl, ss_unk)),
+            6: and_(hs_nl, ss_nl),
+        }
+        if priority in tier_map:
+            query = query.filter(tier_map[priority])
+
+    results = query.offset(skip).limit(limit).all()
+    for prop in results:
+        tier = compute_priority(prop.hs_service, prop.ss_service)
+        prop.priority = tier
+        prop.priority_label = PRIORITY_LABELS.get(tier, '')
+    return results
 
 
 @router.get("/{account_number}", response_model=PropertyResponse)
@@ -66,6 +91,9 @@ def get_property(account_number: str, db: Session = Depends(get_db), _=Depends(v
     prop = db.query(Property).filter(Property.account_number == account_number).first()
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
+    tier = compute_priority(prop.hs_service, prop.ss_service)
+    prop.priority = tier
+    prop.priority_label = PRIORITY_LABELS.get(tier, '')
     return prop
 
 
@@ -96,4 +124,7 @@ def update_property(
 
     db.commit()
     db.refresh(prop)
+    tier = compute_priority(prop.hs_service, prop.ss_service)
+    prop.priority = tier
+    prop.priority_label = PRIORITY_LABELS.get(tier, '')
     return prop

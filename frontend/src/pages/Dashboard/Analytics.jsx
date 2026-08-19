@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { getAnalytics } from '../../lib/api'
-import { colors, materialConfig, typeScale } from '../../lib/design-system'
+import { colors, materialConfig, typeScale, priorityConfig } from '../../lib/design-system'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +15,7 @@ import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
 } from '@/components/ui/chart'
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, AreaChart, Area,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, AreaChart, Area, Cell,
 } from 'recharts'
 import {
   BarChart3, X, Download, Loader2, AlertCircle, Info,
@@ -187,64 +187,62 @@ function EmptyChart({ label }) {
 
 function InventoryProgress({ data }) {
   if (!data) return null
-  const { total, material_on_record, material_on_record_pct, field_verified, field_verified_pct } = data
-  const gap = material_on_record - field_verified
+  const { total, verified, verified_pct, method_breakdown } = data
 
   return (
     <Card>
       <CardContent className="p-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Material on Record</h3>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-800">
-                {material_on_record_pct}%
-              </span>
-            </div>
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${material_on_record_pct}%`, background: colors.civic }}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              <span className="font-semibold tabular-nums text-slate-700">
-                {material_on_record.toLocaleString()}
-              </span>{' '}
-              of {total.toLocaleString()} properties
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Both sides have a known material from any source
-            </p>
-          </div>
-          <div>
-            <h3 className="text-sm font-medium text-muted-foreground">Verified by Field Inspection</h3>
-            <div className="flex items-baseline gap-2 mt-1">
-              <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-800">
-                {field_verified_pct}%
-              </span>
-            </div>
-            <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-              <div
-                className="h-full rounded-full transition-all duration-700"
-                style={{ width: `${field_verified_pct}%`, background: '#16A34A' }}
-              />
-            </div>
-            <p className="text-sm text-muted-foreground mt-1.5">
-              <span className="font-semibold tabular-nums text-slate-700">
-                {field_verified.toLocaleString()}
-              </span>{' '}
-              of {total.toLocaleString()} properties
-            </p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Material confirmed through this system's field visits
-            </p>
-          </div>
+        <h3 className="text-sm font-medium text-muted-foreground">Inventory Verified</h3>
+        <div className="flex items-baseline gap-2 mt-1">
+          <span className="text-4xl font-bold tabular-nums tracking-tight text-slate-800">
+            {verified_pct}%
+          </span>
         </div>
-        {gap > 0 && (
-          <div className="mt-4 pt-4 border-t text-sm text-muted-foreground">
-            <span className="font-semibold tabular-nums text-slate-700">{gap.toLocaleString()}</span>{' '}
-            properties have material records but have not been field verified
+        <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+          <div
+            className="h-full rounded-full transition-all duration-700"
+            style={{ width: `${verified_pct}%`, background: colors.civic }}
+          />
+        </div>
+        <p className="text-sm text-muted-foreground mt-1.5">
+          <span className="font-semibold tabular-nums text-slate-700">
+            {verified.toLocaleString()}
+          </span>{' '}
+          of {total.toLocaleString()} properties &mdash; both sides have an identified material
+        </p>
+        {method_breakdown && (
+          <div className="mt-4 pt-4 border-t">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+              Classification Method
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">House side (private)</p>
+                <div className="space-y-0.5">
+                  {method_breakdown.house_side.slice(0, 5).map((m) => (
+                    <div key={m.method} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 truncate">{m.method}</span>
+                      <span className="tabular-nums text-slate-700 font-medium ml-2">
+                        {m.count.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Street side (public)</p>
+                <div className="space-y-0.5">
+                  {method_breakdown.street_side.slice(0, 5).map((m) => (
+                    <div key={m.method} className="flex items-center justify-between text-sm">
+                      <span className="text-slate-600 truncate">{m.method}</span>
+                      <span className="tabular-nums text-slate-700 font-medium ml-2">
+                        {m.count.toLocaleString()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </CardContent>
@@ -487,6 +485,71 @@ function OutreachReach({ data }) {
   )
 }
 
+function PriorityDistribution({ data }) {
+  if (!data || !data.length) return <EmptyChart label="priority distribution" />
+
+  const chartData = data.map((d) => ({
+    name: `P${d.tier}`,
+    full: d.label,
+    count: d.count,
+    fill: priorityConfig[d.tier]?.color || colors.unknown,
+  }))
+
+  const config = Object.fromEntries(
+    data.map((d) => [`P${d.tier}`, { label: d.label, color: priorityConfig[d.tier]?.color || colors.unknown }])
+  )
+
+  return (
+    <Card>
+      <CardContent className="p-6">
+        <h3 className={typeScale.sectionTitle}>Priority Distribution</h3>
+        <p className="text-xs text-muted-foreground mt-0.5 mb-4">
+          Properties by replacement priority tier
+        </p>
+        <ChartContainer config={config} className="h-64 w-full">
+          <BarChart data={chartData} layout="vertical" margin={{ left: 4 }}>
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 11 }} allowDecimals={false} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 12, fontWeight: 600 }} width={32} />
+            <ChartTooltip
+              content={({ active, payload }) => {
+                if (!active || !payload?.length) return null
+                const d = payload[0].payload
+                return (
+                  <div className="rounded-lg border bg-white px-3 py-2 text-sm shadow-md">
+                    <p className="font-semibold">{d.name}: {d.full}</p>
+                    <p className="text-muted-foreground">{d.count.toLocaleString()} properties</p>
+                  </div>
+                )
+              }}
+            />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              {chartData.map((entry, i) => (
+                <Cell key={i} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ChartContainer>
+        <div className="mt-3 space-y-1">
+          {data.map((d) => (
+            <div key={d.tier} className="flex items-center gap-2 text-xs">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: priorityConfig[d.tier]?.color }}
+              />
+              <span className="font-semibold">P{d.tier}</span>
+              <span className="text-muted-foreground truncate">{d.label}</span>
+              <span className="ml-auto tabular-nums font-medium text-slate-700">
+                {d.count.toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 function DeferredPlaceholder() {
   return (
     <Card className="border-dashed">
@@ -496,10 +559,9 @@ function DeferredPlaceholder() {
           <div>
             <h3 className={typeScale.sectionTitle}>Replacement Tracking</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Three replacement metrics (lines replaced by side, replacement progress over time)
-              and a property priority filter are planned but cannot be built yet &mdash;
-              neither replacement records nor priority designations exist in this system or
-              outside it today.
+              Three replacement metrics (lines replaced by side, replacement progress over time,
+              verified lead lines awaiting replacement) are planned but cannot be built yet &mdash;
+              replacement records do not exist in this system or outside it today.
             </p>
             <p className="text-xs text-muted-foreground mt-2">
               See <span className="font-mono">docs/ANALYTICS_GAPS.md</span> for the specification
@@ -526,8 +588,15 @@ function exportCSV(data, filters) {
 
   lines.push('--- Inventory Progress ---')
   const ip = data.inventory_progress
-  lines.push('Total,Material on Record,Material on Record %,Field Verified,Field Verified %')
-  lines.push(`${ip.total},${ip.material_on_record},${ip.material_on_record_pct}%,${ip.field_verified},${ip.field_verified_pct}%`)
+  lines.push('Total,Verified,Verified %')
+  lines.push(`${ip.total},${ip.verified},${ip.verified_pct}%`)
+  lines.push('')
+
+  lines.push('--- Priority Distribution ---')
+  lines.push('Tier,Label,Count')
+  if (data.priority_distribution) {
+    data.priority_distribution.forEach((d) => lines.push(`P${d.tier},"${d.label}",${d.count}`))
+  }
   lines.push('')
 
   lines.push('--- Material Distribution ---')
@@ -685,6 +754,10 @@ export default function Analytics() {
 
           <RevealItem>
             <OutreachOutcomesOverTime data={data.outreach_outcomes_over_time} />
+          </RevealItem>
+
+          <RevealItem>
+            <PriorityDistribution data={data.priority_distribution} />
           </RevealItem>
 
           <RevealItem>

@@ -12,6 +12,7 @@ import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
 import { ArrowLeft, Plus, ClipboardList, ShieldCheck, ShieldQuestion } from 'lucide-react'
+import PhotoGrid from '../../components/PhotoGrid'
 
 function VerifiedPill({ method }) {
   if (method) {
@@ -202,6 +203,7 @@ export default function PropertyDetail() {
                       <TableHead className="text-xs font-medium">Outcome</TableHead>
                       <TableHead className="text-xs font-medium">Property Type</TableHead>
                       <TableHead className="text-xs font-medium">Notes</TableHead>
+                      <TableHead className="text-xs font-medium">Photos</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -239,6 +241,9 @@ export default function PropertyDetail() {
                         </TableCell>
                         <TableCell className="text-muted-foreground">{v.property_type || '—'}</TableCell>
                         <TableCell className="text-muted-foreground max-w-[200px] truncate">{v.notes || '—'}</TableCell>
+                        <TableCell>
+                          <PhotoGrid urls={v.photo_urls} alt={`Visit ${v.id}`} />
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>

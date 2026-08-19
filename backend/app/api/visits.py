@@ -98,6 +98,17 @@ def create_visit(
     if not prop:
         raise HTTPException(status_code=404, detail="Property not found")
 
+    if access_granted == "Yes" and not verification_outcome:
+        raise HTTPException(
+            status_code=422,
+            detail="Verification outcome is required when access was granted",
+        )
+    if access_granted and access_granted != "Yes" and verification_outcome:
+        raise HTTPException(
+            status_code=422,
+            detail="Verification outcome is not permitted when access was not granted",
+        )
+
     if performed_by_uid:
         performer = db.query(User).filter(
             User.firebase_uid == performed_by_uid,

@@ -6,6 +6,7 @@ import { getProperties, createVisit } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
 import { getMaterial } from '../../lib/design-system'
+import { isOutcomePermitted } from '../../lib/validation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -182,8 +183,10 @@ export default function FieldVisitForm() {
   const getValidationErrors = () => {
     const errors = []
     if (!form.access_granted) errors.push('Access granted is required')
-    if (form.access_granted === 'Yes' && !form.verification_outcome)
+    if (isOutcomePermitted(form.access_granted) && !form.verification_outcome)
       errors.push('Verification outcome is required when access was granted')
+    if (!isOutcomePermitted(form.access_granted) && form.verification_outcome)
+      errors.push('Verification outcome is not permitted when access was not granted')
     if (form.access_granted === 'Yes' && photos.length === 0)
       errors.push('At least one photo is required when access was granted')
     return errors
@@ -243,7 +246,6 @@ export default function FieldVisitForm() {
 
       await createVisit(fd)
       setSubmitted(true)
-      setTimeout(resetForm, 2000)
     } catch (err) {
       if (err.response?.status === 404) {
         setError('Property not found. Check the account number.')
@@ -259,14 +261,29 @@ export default function FieldVisitForm() {
     return (
       <div className="flex items-center justify-center" style={{ minHeight: 'calc(100dvh - 68px)' }}>
         <motion.div
-          className="text-center p-10"
+          className="text-center p-10 max-w-sm mx-auto"
           initial={{ opacity: 0, scale: 0.95, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ type: 'spring', stiffness: 300, damping: 25 }}
         >
           <CheckCircle className="size-20 text-green-600 mx-auto mb-4" />
           <div className="text-3xl font-semibold text-green-700">Visit Logged</div>
-          <div className="text-muted-foreground mt-2">Ready for next property...</div>
+          {photoPreviewURLs.length > 0 && (
+            <div className="mt-5">
+              <p className="text-sm text-muted-foreground mb-2">{photoPreviewURLs.length} photo{photoPreviewURLs.length !== 1 ? 's' : ''} captured</p>
+              <div className="flex gap-2 justify-center flex-wrap">
+                {photoPreviewURLs.map((url, idx) => (
+                  <img key={idx} src={url} alt={`Captured ${idx + 1}`} className="w-20 h-20 object-cover rounded-lg border" />
+                ))}
+              </div>
+            </div>
+          )}
+          <Button
+            onClick={resetForm}
+            className="mt-6 bg-[#1A56A0] hover:bg-[#143F75] text-white w-full h-12 text-base font-semibold"
+          >
+            Next Property
+          </Button>
         </motion.div>
       </div>
     )
@@ -439,7 +456,15 @@ export default function FieldVisitForm() {
                     <Button
                       type="button"
                       variant={form.access_granted === opt.value ? 'default' : 'outline'}
-                      onClick={() => setForm({ ...form, access_granted: opt.value })}
+                      onClick={() => {
+                        const update = { ...form, access_granted: opt.value }
+                        if (opt.value !== 'Yes') {
+                          update.verification_outcome = ''
+                          setPhotos([])
+                          setPhotoPreviewURLs([])
+                        }
+                        setForm(update)
+                      }}
                       className={`w-full min-h-[52px] text-sm font-semibold ${
                         form.access_granted === opt.value ? opt.active : ''
                       }`}
@@ -451,14 +476,17 @@ export default function FieldVisitForm() {
               </div>
             </div>
 
-            <div>
-              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">Verification Outcome</p>
+            <div className={!isOutcomePermitted(form.access_granted) ? 'opacity-40 pointer-events-none' : ''}>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                Verification Outcome {isOutcomePermitted(form.access_granted) && <span className="text-red-500">*</span>}
+              </p>
               <div className="grid grid-cols-2 gap-2">
                 {OUTCOME_OPTIONS.map((opt) => (
                   <motion.div key={opt.value} whileTap={{ scale: 0.97 }} transition={{ type: 'spring', stiffness: 400, damping: 17 }}>
                     <Button
                       type="button"
                       variant={form.verification_outcome === opt.value ? 'default' : 'outline'}
+                      disabled={!isOutcomePermitted(form.access_granted)}
                       onClick={() => setForm({ ...form, verification_outcome: opt.value })}
                       className={`w-full min-h-[52px] text-sm font-semibold ${
                         form.verification_outcome === opt.value ? opt.active : ''
@@ -511,10 +539,10 @@ export default function FieldVisitForm() {
               />
             </div>
 
-            <Card>
+            <Card className={!isOutcomePermitted(form.access_granted) ? 'opacity-40 pointer-events-none' : ''}>
               <CardContent className="p-4">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                  Photos {photos.length > 0 && `(${photos.length}/3)`}
+                  Photos {isOutcomePermitted(form.access_granted) && <span className="text-red-500">*</span>} {photos.length > 0 && `(${photos.length}/3)`}
                 </p>
 
                 {photoPreviewURLs.length > 0 && (
@@ -547,6 +575,7 @@ export default function FieldVisitForm() {
                     <Button
                       type="button"
                       variant="outline"
+                      disabled={!isOutcomePermitted(form.access_granted)}
                       onClick={() => photoInputRef.current?.click()}
                       className="w-full min-h-[52px] border-dashed"
                     >
