@@ -49,10 +49,13 @@ Phase 4 — ML Image Classifier     ⏳ FUTURE / OPTIONAL
 - `idx_properties_address` on `properties.address`
 - `idx_properties_status` on `properties.verified_status`
 
-### Migrations
-- **Alembic: initialized.** Empty baseline migration committed and DB stamped at `6069791d1b62`.
+### Migrations (Alembic)
+- **Baseline:** `9cda6424c61a` — empty baseline, DB stamped (all models reconciled to match live schema first).
+- **`99aa61d63ed4`** — adds `follow_up_date` (DATE, nullable) to `visits` and `outreach_log`.
+- **`4b782110b6d1`** — adds `needs_return` (BOOLEAN, server_default false) to `visits`.
 - **For any schema change:** run `alembic revision --autogenerate -m "description"` then `alembic upgrade head`.
 - When adding new models, also import them in `alembic/env.py`.
+- See `docs/MIGRATIONS.md` for the full workflow.
 
 ### TIMESTAMPTZ Migration (2026-08-17)
 7 of 10 timestamp columns migrated from `TIMESTAMP WITHOUT TIME ZONE` to `TIMESTAMPTZ`:
@@ -152,6 +155,20 @@ SQLAlchemy engine, `SessionLocal`, `Base`, `get_db()` dependency. ✅ Complete.
 5. **Firebase service account key creation blocked by org policy** — switched to JWKS-based token verification using `PyJWKClient` against Firebase's public key endpoint. Only requires `FIREBASE_PROJECT_ID` in `.env`. No service account JSON needed.
 6. **Firebase Admin SDK crashes at import if credentials missing** — wrapped initialization in try/except; error is surfaced at request time (500), not import time.
 
+### Department Demo Feedback Changes (2026-08-20)
+
+Five changes from the department's demo:
+
+1. **Property search typeahead on office forms** — `NewVisit.jsx` and `NewOutreach.jsx` now use `PropertySearch` shared component instead of raw account number input. Prefill from PropertyDetail passes `account_number` + `address` via router state.
+2. **Return-needed flag** — `needs_return` (Boolean) on visits. Prominent amber checkbox on both field and office forms. Properties with unresolved returns appear in a dashboard action card and filterable via `?needs_return=true`. Auto-resolves: a later successful visit (access=Yes, needs_return not true) removes the property from the queue without explicitly clearing the flag.
+3. **Follow-up date on outreach** — `follow_up_date` (DATE) on `outreach_log`. Required when outcome is Scheduled or Follow-up, rejected otherwise. Validated on client and server.
+4. **Follow-up date on visits** — `follow_up_date` (DATE) on `visits`. Required when access is Scheduled (labeled "Appointment Date" in UI), rejected otherwise. Validated on client and server.
+5. **Photos required on customer portal** — "Skip photos and submit" removed. Submit button disabled until ≥1 photo uploaded. Server returns 422 if no photos attached.
+
+Frontend files changed: `NewVisit.jsx`, `NewOutreach.jsx`, `FieldVisitForm.jsx`, `Overview.jsx`, `PropertyDetail.jsx`, `PropertiesList.jsx`, `SubmitForm.jsx`.
+New shared component: `PropertySearch.jsx`.
+Validation helpers added to `validation.js`: `isFollowUpPermitted`, `isOutreachFollowUpRequired`, `isOutreachFollowUpPermitted`.
+
 ### Phase 2.1 E2E — confirmed 2026-05-13
 - Unauthenticated users are redirected to `/login`; after sign-in, redirect back to the intended page ✅
 - Bearer token is attached to all API calls; backend accepts authenticated requests ✅
@@ -200,12 +217,13 @@ recharts
 |---|---|---|
 | `Navbar.jsx` | Top nav bar, role-filtered nav items, rebuilt user menu (avatar, name, email, role badge, Account link, Sign out) | ✅ Updated |
 | `RequireAuth.jsx` | Auth gate + role gate — explicit role-based home redirects, error state for failed role fetch | ✅ Updated |
+| `PropertySearch.jsx` | Shared property typeahead — debounced search, dropdown with address + account number + material indicator | ✅ New |
 | `ui/*.jsx` | 20 shadcn/ui components: button, input, input-group, label, select, textarea, card, badge, table, tabs, separator, avatar, dropdown-menu, alert, skeleton, dialog, sheet, sonner, command, popover, chart | ✅ Installed |
 
 ### `src/pages/Dashboard/`
 | File | Purpose | Status |
 |---|---|---|
-| `Overview.jsx` | Office staff landing page — inventory verified headline (17.0%) with method breakdown, verification status bar, action cards, activity feed, field trend | ✅ Updated |
+| `Overview.jsx` | Office staff landing page — inventory verified headline with method breakdown, verification status bar, action cards (submissions, stalled, untouched, needs return), upcoming follow-ups, activity feed, field trend | ✅ Updated |
 | `PropertiesList.jsx` | Search with shadcn Input/Table/Badge/Skeleton, design tokens, URL filter params (`verified_status`, `stalled`, `untouched`, `priority`) with dismissible chips, priority column + filter dropdown | ✅ Updated |
 | `PropertyDetail.jsx` | Card with blue accent border, 2x2 material grid with color-coded borders, shadcn Tabs/Table/Badge/Skeleton | ✅ Redesigned (shadcn) |
 | `Analytics.jsx` | Compliance analytics page — inventory verified headline with method breakdown, priority distribution chart, material pairings heatmap, distribution bars, verification/outreach time series, CSV export, deferred replacement tracking placeholder | ✅ Updated |

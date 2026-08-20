@@ -530,10 +530,10 @@ export default function SubmitForm() {
                       &larr; Back
                     </Button>
                     <h2 className="text-lg font-semibold text-slate-700 mb-1">
-                      Photos <span className="text-muted-foreground font-normal text-sm">(optional)</span>
+                      Photos <span className="text-red-500">*</span>
                     </h2>
                     <p className="text-sm text-muted-foreground mb-5">
-                      If possible, please upload photos of your water pipe where it enters your home — usually
+                      Please upload at least one photo of your water pipe where it enters your home — usually
                       in the basement near the water meter.
                     </p>
 
@@ -585,19 +585,15 @@ export default function SubmitForm() {
 
                     <Button
                       onClick={handleSubmit}
-                      disabled={loading}
+                      disabled={loading || photos.length === 0}
                       className="w-full h-14 text-lg font-semibold bg-[#1A56A0] hover:bg-[#143F75] text-white"
                     >
                       {loading ? 'Submitting...' : 'Submit'}
                     </Button>
-
-                    {!loading && (
-                      <button
-                        onClick={handleSubmit}
-                        className="w-full text-center text-muted-foreground text-sm mt-3 hover:text-slate-600 py-2"
-                      >
-                        Skip photos and submit
-                      </button>
+                    {photos.length === 0 && (
+                      <p className="text-xs text-amber-600 text-center mt-2">
+                        At least one photo is required to submit
+                      </p>
                     )}
                   </motion.div>
                 )}

@@ -4,7 +4,9 @@ import { motion } from 'framer-motion'
 import { createOutreach } from '../../lib/api'
 import { useUser } from '../../lib/UserContext'
 import { typeScale } from '../../lib/design-system'
+import { isOutreachFollowUpRequired, isOutreachFollowUpPermitted } from '../../lib/validation'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
+import PropertySearch from '../../components/PropertySearch'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -16,13 +18,10 @@ import {
 } from '@/components/ui/select'
 import { ArrowLeft, AlertCircle, CheckCircle, UserCircle } from 'lucide-react'
 
-const ACCT_RE = /^\d{6}-\d{3}$/
-
 function validate(form) {
   const errs = {}
-  const acct = form.account_number.trim()
-  if (!acct || !ACCT_RE.test(acct)) {
-    errs.account_number = 'Enter a valid account number (e.g. 003518-000)'
+  if (!form.account_number) {
+    errs.account_number = 'Select a property from the search results'
   }
   if (!form.method) {
     errs.method = 'Please select a contact method'
@@ -31,6 +30,12 @@ function validate(form) {
     errs.outreach_date = 'Date is required'
   } else if (form.outreach_date > new Date().toISOString().split('T')[0]) {
     errs.outreach_date = 'Date cannot be in the future'
+  }
+  if (isOutreachFollowUpRequired(form.outcome) && !form.follow_up_date) {
+    errs.follow_up_date = `Follow-up date is required when outcome is ${form.outcome}`
+  }
+  if (form.follow_up_date && !isOutreachFollowUpPermitted(form.outcome)) {
+    errs.follow_up_date = 'Follow-up date is not permitted for this outcome'
   }
   if (form.notes.length > 500) {
     errs.notes = 'Notes must be 500 characters or fewer'
@@ -51,12 +56,14 @@ export default function NewOutreach() {
   const [success, setSuccess] = useState(false)
 
   const prefilled = location.state?.account_number || ''
+  const prefilledAddress = location.state?.address || ''
 
   const [form, setForm] = useState({
     account_number: prefilled,
     outreach_date: new Date().toISOString().split('T')[0],
     method: '',
     outcome: '',
+    follow_up_date: '',
     notes: '',
     is_customer_initiated: false,
     customer_initiated_notes: '',
@@ -83,7 +90,9 @@ export default function NewOutreach() {
 
     setLoading(true)
     try {
-      const res = await createOutreach(form)
+      const payload = { ...form }
+      if (!payload.follow_up_date) delete payload.follow_up_date
+      const res = await createOutreach(payload)
       setSuccess(true)
       setTimeout(() => {
         navigate(`/properties/${res.data.account_number}`)
@@ -91,6 +100,8 @@ export default function NewOutreach() {
     } catch (err) {
       if (err.response?.status === 404) {
         setApiError('Property not found. Check the account number and try again.')
+      } else if (err.response?.status === 422) {
+        setApiError(err.response.data?.detail || 'Validation error.')
       } else {
         setApiError('Something went wrong. Is the API running?')
       }
@@ -135,16 +146,25 @@ export default function NewOutreach() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label>
-                  Account Number <span className="text-red-500">*</span>
+                  Property <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  name="account_number"
-                  value={form.account_number}
-                  onChange={handleChange}
-                  placeholder="e.g. 003518-000"
-                  className="font-mono tabular-nums"
-                  aria-invalid={!!fieldErrors.account_number}
-                />
+                {prefilled ? (
+                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border">
+                    <div>
+                      <div className="text-sm font-medium text-slate-800">{prefilledAddress || prefilled}</div>
+                      <div className="text-xs text-muted-foreground font-mono tabular-nums">{prefilled}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <PropertySearch
+                    onSelect={(prop) => {
+                      setForm({ ...form, account_number: prop.account_number })
+                      if (fieldErrors.account_number)
+                        setFieldErrors((prev) => ({ ...prev, account_number: '' }))
+                    }}
+                    inputClassName="h-11"
+                  />
+                )}
                 {fieldErrors.account_number && (
                   <p className="text-xs text-red-600">{fieldErrors.account_number}</p>
                 )}
@@ -200,7 +220,13 @@ export default function NewOutreach() {
                 <Label>Outcome</Label>
                 <Select
                   value={form.outcome}
-                  onValueChange={(v) => setForm({ ...form, outcome: v })}
+                  onValueChange={(v) => {
+                    const update = { ...form, outcome: v }
+                    if (!isOutreachFollowUpPermitted(v)) update.follow_up_date = ''
+                    setForm(update)
+                    if (fieldErrors.follow_up_date)
+                      setFieldErrors((prev) => ({ ...prev, follow_up_date: '' }))
+                  }}
                 >
                   <SelectTrigger className="h-9">
                     <SelectValue placeholder="Select outcome..." />
@@ -212,6 +238,7 @@ export default function NewOutreach() {
                       <SelectItem value="No Answer">No Answer</SelectItem>
                       <SelectItem value="Mailing Received">Mailing Received</SelectItem>
                       <SelectItem value="Scheduled">Scheduled Follow-up</SelectItem>
+                      <SelectItem value="Follow-up">Follow-up Needed</SelectItem>
                       <SelectItem value="Refused">Refused</SelectItem>
                       <SelectItem value="Left Voicemail">Left Voicemail</SelectItem>
                       <SelectItem value="Other">Other</SelectItem>
@@ -219,6 +246,24 @@ export default function NewOutreach() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {isOutreachFollowUpPermitted(form.outcome) && (
+                <div className="space-y-2">
+                  <Label>
+                    Follow-up Date <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="date"
+                    name="follow_up_date"
+                    value={form.follow_up_date}
+                    onChange={handleChange}
+                    aria-invalid={!!fieldErrors.follow_up_date}
+                  />
+                  {fieldErrors.follow_up_date && (
+                    <p className="text-xs text-red-600">{fieldErrors.follow_up_date}</p>
+                  )}
+                </div>
+              )}
 
               <div className="flex items-center gap-3 p-3 border rounded-lg bg-slate-50/50">
                 <UserCircle className="size-7 text-[#1A56A0] shrink-0" />

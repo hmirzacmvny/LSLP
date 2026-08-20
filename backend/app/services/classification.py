@@ -14,6 +14,11 @@ VALID_MATERIALS = frozenset({
     "Brass", "Plastic", "Unknown",
 })
 
+MATERIAL_DETERMINATIONS = frozenset({
+    "Lead", "Copper", "Galvanized", "Cast Iron", "Iron",
+    "Brass", "Plastic", "Completed - Private & Public Verified",
+})
+
 VALID_VERIFICATION_METHODS = frozenset({
     "Customer ID with Photo or Other Verification",
     "Customer Identification",

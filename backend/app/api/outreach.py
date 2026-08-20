@@ -60,6 +60,18 @@ def create_outreach(
         Outreach.account_number == payload.account_number
     ).count()
 
+    FOLLOW_UP_OUTCOMES = {"Scheduled", "Follow-up"}
+    if payload.outcome in FOLLOW_UP_OUTCOMES and not payload.follow_up_date:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Follow-up date is required when outcome is {payload.outcome}",
+        )
+    if payload.outcome and payload.outcome not in FOLLOW_UP_OUTCOMES and payload.follow_up_date:
+        raise HTTPException(
+            status_code=422,
+            detail="Follow-up date is not permitted for this outcome",
+        )
+
     payload_dict = payload.model_dump()
     new_record = Outreach(
         **payload_dict,

@@ -10,6 +10,7 @@ class OutreachCreate(BaseModel):
     notes: Optional[str] = None
     is_customer_initiated: Optional[bool] = False
     customer_initiated_notes: Optional[str] = None
+    follow_up_date: Optional[date] = None
 
 class OutreachResponse(BaseModel):
     id: int
@@ -22,6 +23,7 @@ class OutreachResponse(BaseModel):
     notes: Optional[str] = None
     is_customer_initiated: Optional[bool] = False
     customer_initiated_notes: Optional[str] = None
+    follow_up_date: Optional[date] = None
     created_by_uid: Optional[str] = None
     created_by_email: Optional[str] = None
     created_at: Optional[datetime] = None

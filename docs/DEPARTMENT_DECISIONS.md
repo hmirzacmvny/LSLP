@@ -1,6 +1,6 @@
 # Department Decisions
 
-Design decisions from the Mount Vernon water department, recorded 2026-08-19. These are the reference for all implementation work going forward. Each entry records what was decided, its implications for the system, and any open questions that remain.
+Design decisions from the Mount Vernon water department. These are the reference for all implementation work going forward. Each entry records what was decided, its implications for the system, and any open questions that remain.
 
 ---
 
@@ -119,3 +119,71 @@ Non-Lead means any identified material that is not Lead: Copper, Brass, Plastic,
 **Implication:** This connects to the Brightly integration planned for Phase 3.3. The data model specified in `docs/ANALYTICS_GAPS.md` (a `replacements` table linked by `account_number`) aligns with this requirement.
 
 **Status:** Recorded. Blocked on Brightly API access. See `ROADMAP.md` Phase 3.3.
+
+---
+
+## 10. Return-Needed Flag (Demo Feedback, 2026-08-20)
+
+**Decision:** Field crews need a way to flag properties that could not be completed and require a return visit. This must be prominent on the field form — not buried in notes.
+
+**Conditional display rule:** The flag is offered whenever the visit has not produced a material determination. This means:
+- **No access** (No, No Answer, Refused): checkbox available — outcome field is empty.
+- **Access with non-determination** (Unknown, Inaccessible, Inconclusive): checkbox available — the crew got in but could not identify the material.
+- **Access with material identified** (Lead, Copper, Galvanized, Brass, Cast Iron, Iron, Plastic): checkbox hidden and cleared — the work is done.
+- **Scheduled**: checkbox hidden and cleared — the appointment date is the return commitment, not the flag.
+
+The determination set is defined as `MATERIAL_DETERMINATIONS` in `classification.py` (backend) and `validation.js` (frontend). Any outcome not in the set keeps the checkbox available, which is the safe default for unknown imported values.
+
+**Imported D2D outcomes classified:**
+- Copper, Lead → material determinations (hide checkbox)
+- Awaiting Customer Call → not a determination — still trying to reach the homeowner
+- Follow-Up → not a determination — requires another interaction
+- Inconclusive → not a determination — could not identify the material
+- Completed - Private & Public Verified → material determination — both sides verified, work is done (not present in current data but included for future imports)
+
+**Scheduled visits as a return source:** When access is Scheduled and a follow_up_date is set, the property enters the return queue via the appointment, not the flag. The flag is hidden because the date is a stronger commitment. If the appointment date passes with no follow-up visit recorded, the property stays in the queue — a missed appointment is not resolved by the passage of time.
+
+**Server-side enforcement:** POST rejects with 422 when `needs_return=true` alongside a material determination outcome, or when `needs_return=true` and access is Scheduled. Catches records queued offline before these rules existed.
+
+**Not confirmed with the department.** This rule was decided internally based on what makes operational sense. Worth checking with the department whether there are edge cases (e.g. "material identified on one side but need to return for the other side" once side-aware visits exist per Decision 2).
+
+**Implementation:** A `needs_return` Boolean on `visits`, defaulting to false. The return queue is a computed view with two sources: (1) properties with any visit where `needs_return = true`, and (2) properties with any Scheduled visit that has a `follow_up_date`. Both are resolved by a later visit where `access_granted = 'Yes'` and `verification_outcome` is a material determination. The original visit's flag stays true as a historical record; a later successful visit removes the property from the queue without mutating the flag.
+
+**Visual treatment:** Neutral (slate) — not amber, which conflicts with the orange used for galvanized material throughout the interface. The icon (RotateCcw) and label carry the meaning. Consistent across both visit forms, property detail, properties list, and the dashboard action card.
+
+**Implication:** Dashboard shows a "Needs return visit" action card linking to `/properties?needs_return=true`. The same filter logic is used in both the dashboard count and the properties list query to ensure agreement.
+
+**Status:** Implemented. Alembic migration `4b782110b6d1`. UI on both field and office forms. Conditional display via shared `isNeedsReturnPermitted()` and `MATERIAL_DETERMINATIONS` in `validation.js` and `classification.py`.
+
+---
+
+## 11. Follow-Up Dates (Demo Feedback, 2026-08-20)
+
+**Decision:** The department wants to track follow-up dates on both outreach and visits, with conditional validation:
+
+- **Outreach:** `follow_up_date` required when outcome is "Scheduled" or "Follow-up", rejected otherwise.
+- **Visits:** `follow_up_date` required when access is "Scheduled" (labeled "Appointment Date" in UI), rejected otherwise.
+
+**Implementation:** Nullable DATE columns on both tables. Validated on client (fields only appear when the condition is met) and server (422 if rules violated). Combined follow-ups from both sources appear in an "Upcoming Follow-ups" section on the Overview dashboard.
+
+**Status:** Implemented. Alembic migration `99aa61d63ed4`. Validation on both client and server.
+
+---
+
+## 12. Photo Requirement on Customer Portal (Demo Feedback, 2026-08-20)
+
+**Decision:** Photos are no longer optional on the customer portal. The "Skip photos and submit" option was removed. At least one photo is required.
+
+**Implementation:** Frontend: submit button disabled until ≥1 photo uploaded; skip link removed; heading changed from "optional" to required. Backend: server returns 422 with "At least one photo is required" if no photos are attached.
+
+**Status:** Implemented. Both client and server enforce the requirement.
+
+---
+
+## 13. Property Search Typeahead on Office Forms (Demo Feedback, 2026-08-20)
+
+**Decision:** The office forms for logging visits and outreach should use a property search typeahead instead of requiring the user to know and type an account number.
+
+**Implementation:** Shared `PropertySearch` component (debounced search, dropdown with address + account number + material indicator) replaces the raw account number input on `NewVisit.jsx` and `NewOutreach.jsx`. When navigating from a property detail page, the account number and address are pre-filled via router state, and the search is replaced with a read-only property display.
+
+**Status:** Implemented.

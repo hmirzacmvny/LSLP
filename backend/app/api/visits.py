@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
@@ -10,6 +10,7 @@ from app.models.property import Property
 from app.schemas.visit import VisitCreate, VisitResponse
 from app.services.storage import save_photo
 from app.services.auth import verify_firebase_token, require_role
+from app.services.classification import MATERIAL_DETERMINATIONS
 
 router = APIRouter()
 
@@ -88,6 +89,8 @@ def create_visit(
     property_type: Optional[str] = Form(None),
     notes: Optional[str] = Form(None),
     gps_coordinates: Optional[str] = Form(None),
+    follow_up_date: Optional[str] = Form(None),
+    needs_return: Optional[bool] = Form(False),
     photos: Optional[List[UploadFile]] = File(None),
     db: Session = Depends(get_db),
     user: User = Depends(verify_firebase_token),
@@ -107,6 +110,35 @@ def create_visit(
         raise HTTPException(
             status_code=422,
             detail="Verification outcome is not permitted when access was not granted",
+        )
+
+    parsed_follow_up: Optional[date] = None
+    if follow_up_date:
+        if access_granted != "Scheduled":
+            raise HTTPException(
+                status_code=422,
+                detail="Follow-up date is only permitted when access is Scheduled",
+            )
+        try:
+            parsed_follow_up = date.fromisoformat(follow_up_date)
+        except ValueError:
+            raise HTTPException(status_code=422, detail="Invalid follow_up_date format (expected YYYY-MM-DD)")
+    elif access_granted == "Scheduled":
+        raise HTTPException(
+            status_code=422,
+            detail="Follow-up date is required when access is Scheduled",
+        )
+
+    if needs_return and verification_outcome in MATERIAL_DETERMINATIONS:
+        raise HTTPException(
+            status_code=422,
+            detail="needs_return is not permitted when a material has been determined",
+        )
+
+    if needs_return and access_granted == "Scheduled":
+        raise HTTPException(
+            status_code=422,
+            detail="needs_return is not permitted when access is Scheduled — the appointment date is the return commitment",
         )
 
     if performed_by_uid:
@@ -150,6 +182,8 @@ def create_visit(
         notes=notes,
         photo_urls=photo_urls,
         gps_coordinates=gps,
+        follow_up_date=parsed_follow_up,
+        needs_return=needs_return or False,
         created_at=now,
     )
 

@@ -20,6 +20,7 @@ const FILTER_LABELS = {
   verified_status: (v) => `Status: ${v}`,
   stalled: () => 'Stalled outreach (4+ attempts, unresolved)',
   untouched: () => 'Never touched (no visits or outreach)',
+  needs_return: () => 'Needs return visit',
   priority: (v) => `Priority: P${v} – ${priorityConfig[v]?.full || ''}`,
 }
 
@@ -134,10 +135,12 @@ export default function PropertiesList() {
     const vs = searchParams.get('verified_status')
     const st = searchParams.get('stalled')
     const ut = searchParams.get('untouched')
+    const nr = searchParams.get('needs_return')
     const pr = searchParams.get('priority')
     if (vs) params.verified_status = vs
     if (st) params.stalled = st
     if (ut) params.untouched = ut
+    if (nr) params.needs_return = nr
     if (pr) params.priority = pr
     if (Object.keys(params).length > 0) {
       setLoading(true)
@@ -151,7 +154,7 @@ export default function PropertiesList() {
   }, [searchParams])
 
   const activeFilters = []
-  for (const key of ['verified_status', 'stalled', 'untouched', 'priority']) {
+  for (const key of ['verified_status', 'stalled', 'untouched', 'needs_return', 'priority']) {
     const val = searchParams.get(key)
     if (val) activeFilters.push({ key, value: val })
   }

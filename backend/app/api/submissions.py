@@ -113,6 +113,8 @@ def create_submission(
             )
     if prior_line_work is None:
         errors.append("prior_line_work is required")
+    if not photos or all(not p.filename for p in photos):
+        errors.append("At least one photo is required")
     if errors:
         raise HTTPException(status_code=422, detail="; ".join(errors))
 

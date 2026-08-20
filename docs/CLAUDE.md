@@ -148,7 +148,7 @@ visited_at (server-set),
 access_granted (String, NOT Boolean — values include "Yes", "No",
 "No Answer", "Scheduled", "No (Refused)"), verification_outcome,
 property_type, notes, photo_urls (JSONB), gps_coordinates (JSONB),
-work_order_id, created_at
+work_order_id, follow_up_date (DATE, nullable), created_at
 ```
 
 ### `outreach_log` (9,485 rows)
@@ -156,7 +156,8 @@ One row per attempt. **Converted from wide format (4 columns) to long format (1 
 ```
 id (PK SERIAL), account_number (FK), attempt_number (server-set),
 outreach_date (DATE not DATETIME), method, outcome, initials, notes,
-is_customer_initiated (Boolean), customer_initiated_notes, created_at
+is_customer_initiated (Boolean), customer_initiated_notes,
+follow_up_date (DATE, nullable), created_at
 ```
 
 ### `customer_submissions` (empty, ready for Phase 2)
@@ -272,7 +273,7 @@ The survey grid spacing (48px) was chosen because it references engineering grap
 
 - ❌ Never paste secrets, passwords, or API keys in chat or commit messages
 - ❌ Never use `DELETE` without a `WHERE` clause in pgAdmin
-- ❌ Never edit the database schema directly in pgAdmin once Alembic is set up — use migrations
+- ❌ Never edit the database schema directly in pgAdmin — all schema changes go through Alembic migrations (`alembic revision --autogenerate`, review, then `alembic upgrade head`). Manual `ALTER TABLE` statements are no longer used. See `docs/MIGRATIONS.md` for the full workflow.
 - ❌ Never reintroduce the wide-format outreach log
 - ❌ Never accept `visited_at`, `attempt_number`, `initials` (on visits), `created_by_uid`, or `entered_by_uid` from the client — these are set server-side from the authenticated user and/or the selected performer
 - ❌ Never use React Native — we use PWA only

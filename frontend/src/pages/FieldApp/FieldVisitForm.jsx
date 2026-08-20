@@ -6,7 +6,7 @@ import { getProperties, createVisit } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
 import { getMaterial } from '../../lib/design-system'
-import { isOutcomePermitted } from '../../lib/validation'
+import { isOutcomePermitted, isFollowUpPermitted, isNeedsReturnPermitted, isMaterialDetermination } from '../../lib/validation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -70,6 +70,8 @@ export default function FieldVisitForm() {
     verification_outcome: '',
     property_type: '',
     notes: '',
+    follow_up_date: '',
+    needs_return: false,
   })
   const [photos, setPhotos] = useState([])
   const [photoPreviewURLs, setPhotoPreviewURLs] = useState([])
@@ -170,7 +172,7 @@ export default function FieldVisitForm() {
     setSearchResults([])
     setShowDropdown(false)
     setSelectedProperty(null)
-    setForm({ access_granted: '', verification_outcome: '', property_type: '', notes: '' })
+    setForm({ access_granted: '', verification_outcome: '', property_type: '', notes: '', follow_up_date: '', needs_return: false })
     setPhotos([])
     setPhotoPreviewURLs([])
     setGpsCoords(null)
@@ -187,6 +189,12 @@ export default function FieldVisitForm() {
       errors.push('Verification outcome is required when access was granted')
     if (!isOutcomePermitted(form.access_granted) && form.verification_outcome)
       errors.push('Verification outcome is not permitted when access was not granted')
+    if (isFollowUpPermitted(form.access_granted) && !form.follow_up_date)
+      errors.push('Appointment date is required when access is Scheduled')
+    if (!isFollowUpPermitted(form.access_granted) && form.follow_up_date)
+      errors.push('Appointment date is only permitted when access is Scheduled')
+    if (form.needs_return && !isNeedsReturnPermitted(form.access_granted, form.verification_outcome))
+      errors.push('Return-needed is not permitted when a material has been determined')
     if (form.access_granted === 'Yes' && photos.length === 0)
       errors.push('At least one photo is required when access was granted')
     return errors
@@ -211,10 +219,13 @@ export default function FieldVisitForm() {
     setError(null)
 
     const gpsString = gpsCoords ? JSON.stringify(gpsCoords) : null
+    const { needs_return, follow_up_date, ...restForm } = form
     const formPayload = {
       account_number: accountNumber,
-      ...form,
+      ...restForm,
       ...(gpsString ? { gps_coordinates: gpsString } : {}),
+      ...(follow_up_date ? { follow_up_date } : {}),
+      ...(needs_return ? { needs_return: 'true' } : {}),
     }
 
     if (!navigator.onLine) {
@@ -463,6 +474,12 @@ export default function FieldVisitForm() {
                           setPhotos([])
                           setPhotoPreviewURLs([])
                         }
+                        if (opt.value !== 'Scheduled') {
+                          update.follow_up_date = ''
+                        }
+                        if (opt.value === 'Scheduled') {
+                          update.needs_return = false
+                        }
                         setForm(update)
                       }}
                       className={`w-full min-h-[52px] text-sm font-semibold ${
@@ -487,7 +504,11 @@ export default function FieldVisitForm() {
                       type="button"
                       variant={form.verification_outcome === opt.value ? 'default' : 'outline'}
                       disabled={!isOutcomePermitted(form.access_granted)}
-                      onClick={() => setForm({ ...form, verification_outcome: opt.value })}
+                      onClick={() => {
+                        const update = { ...form, verification_outcome: opt.value }
+                        if (isMaterialDetermination(opt.value)) update.needs_return = false
+                        setForm(update)
+                      }}
                       className={`w-full min-h-[52px] text-sm font-semibold ${
                         form.verification_outcome === opt.value ? opt.active : ''
                       }`}
@@ -513,6 +534,41 @@ export default function FieldVisitForm() {
                 </SelectContent>
               </Select>
             </div>
+
+            {isFollowUpPermitted(form.access_granted) && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">
+                  Appointment Date <span className="text-red-500">*</span>
+                </p>
+                <Input
+                  type="date"
+                  value={form.follow_up_date}
+                  onChange={(e) => setForm({ ...form, follow_up_date: e.target.value })}
+                  className="h-12 text-base"
+                />
+              </div>
+            )}
+
+            {isNeedsReturnPermitted(form.access_granted, form.verification_outcome) && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-2">Return Queue</p>
+                <Card className="border-slate-200 bg-slate-50">
+                  <CardContent className="p-4 flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      id="needs_return"
+                      checked={form.needs_return}
+                      onChange={(e) => setForm({ ...form, needs_return: e.target.checked })}
+                      className="w-6 h-6 accent-slate-600"
+                    />
+                    <label htmlFor="needs_return" className="min-w-0">
+                      <div className="text-base font-semibold text-slate-700">Needs return visit</div>
+                      <div className="text-sm text-muted-foreground">This property will be added to the return queue</div>
+                    </label>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
 
             <Card>
               <CardContent className="p-4 flex items-center gap-3">

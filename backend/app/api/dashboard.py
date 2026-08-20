@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from sqlalchemy import func, text
+from sqlalchemy import and_, or_, func, text
 from datetime import date, datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 from app.database import get_db
@@ -9,7 +9,7 @@ from app.models.visit import Visit
 from app.models.outreach import OutreachLog
 from app.models.submission import CustomerSubmission
 from app.services.auth import require_role
-from app.services.classification import compute_inventory_progress
+from app.services.classification import compute_inventory_progress, MATERIAL_DETERMINATIONS
 
 router = APIRouter()
 
@@ -63,6 +63,75 @@ def get_dashboard_summary(
         WHERE NOT EXISTS (SELECT 1 FROM visits v WHERE v.account_number = p.account_number)
           AND NOT EXISTS (SELECT 1 FROM outreach_log o WHERE o.account_number = p.account_number)
     """)).scalar()
+
+    today = date.today()
+    upcoming_outreach = (
+        db.query(
+            OutreachLog.account_number,
+            OutreachLog.follow_up_date,
+            OutreachLog.outcome,
+            Property.address,
+        )
+        .join(Property, Property.account_number == OutreachLog.account_number)
+        .filter(OutreachLog.follow_up_date != None, OutreachLog.follow_up_date >= today)
+        .order_by(OutreachLog.follow_up_date)
+        .limit(10)
+        .all()
+    )
+    upcoming_visits = (
+        db.query(
+            Visit.account_number,
+            Visit.follow_up_date,
+            Visit.initials,
+            Property.address,
+        )
+        .join(Property, Property.account_number == Visit.account_number)
+        .filter(Visit.follow_up_date != None, Visit.follow_up_date >= today)
+        .order_by(Visit.follow_up_date)
+        .limit(10)
+        .all()
+    )
+    follow_ups = []
+    for r in upcoming_outreach:
+        follow_ups.append({
+            "type": "outreach",
+            "account_number": r.account_number,
+            "address": r.address,
+            "date": r.follow_up_date.isoformat(),
+            "detail": r.outcome,
+        })
+    for r in upcoming_visits:
+        follow_ups.append({
+            "type": "visit",
+            "account_number": r.account_number,
+            "address": r.address,
+            "date": r.follow_up_date.isoformat(),
+            "detail": r.initials,
+        })
+    follow_ups.sort(key=lambda x: x["date"])
+    follow_ups = follow_ups[:10]
+
+    return_accounts = db.query(Visit.account_number).filter(
+        or_(
+            Visit.needs_return.is_(True),
+            and_(
+                Visit.access_granted == "Scheduled",
+                Visit.follow_up_date.isnot(None),
+            ),
+        )
+    ).distinct()
+    completed_accounts = db.query(Visit.account_number).filter(
+        Visit.access_granted == "Yes",
+        Visit.verification_outcome.in_(MATERIAL_DETERMINATIONS),
+    ).distinct()
+    needs_return_count = (
+        db.query(func.count(Property.account_number))
+        .filter(
+            Property.account_number.in_(return_accounts),
+            ~Property.account_number.in_(completed_accounts),
+        )
+        .scalar()
+    )
 
     recent_visits = db.execute(text("""
         SELECT 'visit' AS type, p.address, v.account_number, v.initials AS who, v.visited_at AS occurred_at,
@@ -124,5 +193,7 @@ def get_dashboard_summary(
         "visits_prior_7": visits_prior_7,
         "stalled_outreach": stalled_outreach,
         "never_touched": never_touched,
+        "needs_return": needs_return_count,
+        "upcoming_follow_ups": follow_ups,
         "recent_activity": combined,
     }

@@ -6,7 +6,7 @@ What's coming next, organized by phase. Each item is sized so a solo developer c
 
 ## Immediate Next Actions (pick up here next session)
 
-Phases 2.1–2.8 are complete plus analytics page, four fixes, and performer/enterer separation. TIMESTAMPTZ migration done (7/10 columns; 3 properties columns remain). Department decisions recorded in `docs/DEPARTMENT_DECISIONS.md`. Verification metric reframed; priority classification implemented. **Next: Phase 2.9 — Phase 2 Wrap-Up.**
+Phases 2.1–2.8 are complete plus analytics page, four fixes, performer/enterer separation, Alembic setup, and department demo feedback changes. TIMESTAMPTZ migration done (7/10 columns; 3 properties columns remain). Department decisions recorded in `docs/DEPARTMENT_DECISIONS.md`. Demo feedback implemented: property search typeahead, return-needed flag, follow-up dates, portal photo requirement. **Next: Phase 2.9 — Phase 2 Wrap-Up.**
 
 **✅ TIMESTAMPTZ migration — DONE (7 of 10 columns):**
 Migrated 2026-08-17: `visits.visited_at`, `visits.created_at`, `outreach_log.created_at`, `customer_submissions.submitted_at`, `customer_submissions.reviewed_at`, `audit_log.changed_at`, `users.created_at`. Historical naive timestamps were correctly interpreted as server-local Eastern time and converted to UTC internally by PostgreSQL.
@@ -26,7 +26,7 @@ Pre-phase hygiene tasks — all complete:
 
 1. ~~**Initialize Git.**~~ ✅ Done — baseline committed on `main`.
 2. ~~**Create `.env.example`.**~~ ✅ Done.
-3. ~~**Initialize Alembic.**~~ ✅ Done — DB stamped at baseline `6069791d1b62`.
+3. ~~**Initialize Alembic.**~~ ✅ Done — models reconciled to match live DB, baseline `9cda6424c61a` stamped, first real migration (`99aa61d63ed4` — follow_up_date) applied. Workflow documented in `docs/MIGRATIONS.md`.
 4. ~~**Test the login flow end-to-end.**~~ ✅ Done — unauthenticated requests return `{"detail": "Not authenticated"}` (401); role enforcement confirmed 2026-05-13.
 5. **Add an `outreach_log` API edge case.** When a property already has 4 attempts and a 5th comes in, the `attempt_number` calculation should still work (we tested up to 4 because that's the imported data, but the new schema supports unlimited). Defer until Phase 2 wrap-up.
 

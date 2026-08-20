@@ -7,7 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Inbox, AlertTriangle, EyeOff, ArrowUpRight, ArrowDownRight, Minus,
-  ClipboardCheck, Megaphone, ChevronRight,
+  ClipboardCheck, Megaphone, ChevronRight, RotateCcw, CalendarClock,
 } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -128,6 +128,14 @@ export default function Overview() {
       onClick: () => navigate('/properties?untouched=true'),
       accent: data.never_touched > 0,
     },
+    {
+      label: 'Needs return visit',
+      count: data.needs_return || 0,
+      icon: RotateCcw,
+      onClick: () => navigate('/properties?needs_return=true'),
+      accent: (data.needs_return || 0) > 0,
+      neutral: true,
+    },
   ]
 
   return (
@@ -195,15 +203,19 @@ export default function Overview() {
 
       {/* Action row */}
       <RevealItem>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {actionCards.map((card) => {
             const Icon = card.icon
+            const borderColor = card.accent
+              ? card.neutral ? 'border-l-4 border-l-slate-400' : 'border-l-4 border-l-amber-400'
+              : ''
+            const iconColor = card.accent
+              ? card.neutral ? 'text-slate-500' : 'text-amber-500'
+              : 'text-slate-400'
             return (
               <Card
                 key={card.label}
-                className={`cursor-pointer transition-colors hover:bg-slate-50/80 ${
-                  card.accent ? 'border-l-4 border-l-amber-400' : ''
-                }`}
+                className={`cursor-pointer transition-colors hover:bg-slate-50/80 ${borderColor}`}
                 onClick={card.onClick}
               >
                 <CardContent className="p-5 flex items-start justify-between">
@@ -213,7 +225,7 @@ export default function Overview() {
                       {card.count.toLocaleString()}
                     </p>
                   </div>
-                  <Icon className={`size-5 mt-1 ${card.accent ? 'text-amber-500' : 'text-slate-400'}`} />
+                  <Icon className={`size-5 mt-1 ${iconColor}`} />
                 </CardContent>
               </Card>
             )
@@ -255,6 +267,44 @@ export default function Overview() {
           </CardContent>
         </Card>
       </RevealItem>
+
+      {/* Upcoming follow-ups */}
+      {data.upcoming_follow_ups && data.upcoming_follow_ups.length > 0 && (
+        <RevealItem>
+          <Card>
+            <CardContent className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <CalendarClock className="size-4 text-[#1A56A0]" />
+                <h2 className={typeScale.sectionTitle}>Upcoming Follow-ups</h2>
+              </div>
+              <div className="space-y-1">
+                {data.upcoming_follow_ups.map((item, i) => {
+                  const isVisit = item.type === 'visit'
+                  return (
+                    <button
+                      key={`${item.type}-${item.account_number}-${i}`}
+                      onClick={() => navigate(`/properties/${item.account_number}`)}
+                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <div className={`w-1.5 h-8 rounded-full ${isVisit ? 'bg-[#1A56A0]' : 'bg-amber-500'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm text-slate-800 truncate">{item.address}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {isVisit ? 'Scheduled visit' : 'Outreach follow-up'}
+                          {item.detail ? ` — ${item.detail}` : ''}
+                        </p>
+                      </div>
+                      <span className="text-xs font-medium tabular-nums text-[#1A56A0] whitespace-nowrap">
+                        {new Date(item.date).toLocaleDateString()}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </RevealItem>
+      )}
 
       {/* Bottom row: activity feed + trend */}
       <RevealItem>

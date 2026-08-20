@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import {
   Table, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table'
-import { ArrowLeft, Plus, ClipboardList, ShieldCheck, ShieldQuestion } from 'lucide-react'
+import { ArrowLeft, Plus, ClipboardList, ShieldCheck, ShieldQuestion, RotateCcw } from 'lucide-react'
 import PhotoGrid from '../../components/PhotoGrid'
 
 function VerifiedPill({ method }) {
@@ -136,11 +136,11 @@ export default function PropertyDetail() {
                 <Badge variant="outline" className={`text-xs ${getStatus(property.acct_status).badgeCls}`}>
                   {property.acct_status}
                 </Badge>
-                <Button size="sm" onClick={() => navigate('/visits/new')} className="bg-[#1A56A0] hover:bg-[#143F75] text-white">
+                <Button size="sm" onClick={() => navigate('/visits/new', { state: { account_number: property.account_number, address: property.address } })} className="bg-[#1A56A0] hover:bg-[#143F75] text-white">
                   <Plus className="size-4" />
                   Log Visit
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => navigate('/outreach/new')}>
+                <Button variant="outline" size="sm" onClick={() => navigate('/outreach/new', { state: { account_number: property.account_number, address: property.address } })}>
                   <ClipboardList className="size-4" />
                   Log Outreach
                 </Button>
@@ -202,6 +202,7 @@ export default function PropertyDetail() {
                       <TableHead className="text-xs font-medium">Access</TableHead>
                       <TableHead className="text-xs font-medium">Outcome</TableHead>
                       <TableHead className="text-xs font-medium">Property Type</TableHead>
+                      <TableHead className="text-xs font-medium">Follow-up</TableHead>
                       <TableHead className="text-xs font-medium">Notes</TableHead>
                       <TableHead className="text-xs font-medium">Photos</TableHead>
                     </TableRow>
@@ -240,6 +241,22 @@ export default function PropertyDetail() {
                           {v.verification_outcome || '—'}
                         </TableCell>
                         <TableCell className="text-muted-foreground">{v.property_type || '—'}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            {v.needs_return && (
+                              <Badge variant="outline" className="text-[10px] bg-slate-100 text-slate-600 border-slate-300 w-fit">
+                                <RotateCcw className="size-2.5 mr-1" />
+                                Return needed
+                              </Badge>
+                            )}
+                            {v.follow_up_date && (
+                              <span className="text-xs tabular-nums text-muted-foreground">
+                                {new Date(v.follow_up_date).toLocaleDateString()}
+                              </span>
+                            )}
+                            {!v.needs_return && !v.follow_up_date && '—'}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-muted-foreground max-w-[200px] truncate">{v.notes || '—'}</TableCell>
                         <TableCell>
                           <PhotoGrid urls={v.photo_urls} alt={`Visit ${v.id}`} />
@@ -271,6 +288,7 @@ export default function PropertyDetail() {
                       <TableHead className="text-xs font-medium">Method</TableHead>
                       <TableHead className="text-xs font-medium">Outcome</TableHead>
                       <TableHead className="text-xs font-medium">Initials</TableHead>
+                      <TableHead className="text-xs font-medium">Follow-up</TableHead>
                       <TableHead className="text-xs font-medium">Notes</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -289,6 +307,9 @@ export default function PropertyDetail() {
                         <TableCell>{o.outcome || '—'}</TableCell>
                         <TableCell className="font-mono font-semibold text-[#1A56A0]">
                           {o.initials || '—'}
+                        </TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {o.follow_up_date ? new Date(o.follow_up_date).toLocaleDateString() : '—'}
                         </TableCell>
                         <TableCell className="text-muted-foreground max-w-[200px] truncate">{o.notes || '—'}</TableCell>
                       </TableRow>

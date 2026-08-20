@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
-from datetime import datetime
+from datetime import date, datetime
 
 class VisitBase(BaseModel):
     model_config = {"from_attributes": True}
@@ -21,6 +21,8 @@ class VisitCreate(VisitBase):
 class VisitResponse(VisitBase):
     id: int
     visited_at: Optional[datetime] = None
+    follow_up_date: Optional[date] = None
+    needs_return: Optional[bool] = False
     created_at: Optional[datetime] = None
     created_by_uid: Optional[str] = None
     created_by_email: Optional[str] = None

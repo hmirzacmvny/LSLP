@@ -11,7 +11,7 @@ from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.schemas.property import PropertyResponse, PropertyUpdate
 from app.services.auth import verify_firebase_token, require_role
-from app.services.classification import compute_priority, PRIORITY_LABELS
+from app.services.classification import compute_priority, PRIORITY_LABELS, MATERIAL_DETERMINATIONS
 
 router = APIRouter()
 
@@ -24,6 +24,7 @@ def get_properties(
     search: Optional[str] = Query(None),
     stalled: Optional[bool] = Query(None),
     untouched: Optional[bool] = Query(None),
+    needs_return: Optional[bool] = Query(None),
     priority: Optional[int] = Query(None),
     db: Session = Depends(get_db),
     _=Depends(verify_firebase_token),
@@ -58,6 +59,25 @@ def get_properties(
             ~Property.account_number.in_(
                 db.query(OutreachLog.account_number).distinct()
             ),
+        )
+
+    if needs_return:
+        return_accounts = db.query(Visit.account_number).filter(
+            or_(
+                Visit.needs_return.is_(True),
+                and_(
+                    Visit.access_granted == "Scheduled",
+                    Visit.follow_up_date.isnot(None),
+                ),
+            )
+        ).distinct()
+        completed_accounts = db.query(Visit.account_number).filter(
+            Visit.access_granted == "Yes",
+            Visit.verification_outcome.in_(MATERIAL_DETERMINATIONS),
+        ).distinct()
+        query = query.filter(
+            Property.account_number.in_(return_accounts),
+            ~Property.account_number.in_(completed_accounts),
         )
 
     if priority is not None:

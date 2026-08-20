@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { createVisit, getFieldUsers } from '../../lib/api'
 import { db } from '../../lib/db'
 import { getPendingCount } from '../../lib/sync'
 import { typeScale } from '../../lib/design-system'
-import { isOutcomePermitted } from '../../lib/validation'
+import { isOutcomePermitted, isFollowUpPermitted, isNeedsReturnPermitted, isMaterialDetermination } from '../../lib/validation'
 import { PageReveal, RevealItem } from '../../components/PageReveal'
+import PropertySearch from '../../components/PropertySearch'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -17,8 +18,6 @@ import {
   Select, SelectTrigger, SelectValue, SelectContent, SelectItem,
 } from '@/components/ui/select'
 import { ArrowLeft, Camera, AlertCircle, CheckCircle, WifiOff, Loader2 } from 'lucide-react'
-
-const ACCT_RE = /^\d{6}-\d{3}$/
 
 const ACCESS_OPTIONS = ['Yes', 'No', 'No Answer', 'Refused', 'Scheduled']
 const OUTCOME_OPTIONS = [
@@ -31,9 +30,8 @@ const OUTCOME_OPTIONS = [
 
 function validate(form) {
   const errs = {}
-  const acct = form.account_number.trim()
-  if (!acct || !ACCT_RE.test(acct)) {
-    errs.account_number = 'Enter a valid account number (e.g. 003518-000)'
+  if (!form.account_number) {
+    errs.account_number = 'Select a property from the search results'
   }
   if (!form.performed_by_uid) {
     errs.performed_by_uid = 'Select the crew member who performed this inspection'
@@ -47,6 +45,15 @@ function validate(form) {
   if (!isOutcomePermitted(form.access_granted) && form.verification_outcome) {
     errs.verification_outcome = 'Verification outcome is not permitted when access was not granted'
   }
+  if (isFollowUpPermitted(form.access_granted) && !form.follow_up_date) {
+    errs.follow_up_date = 'Follow-up date is required when access is Scheduled'
+  }
+  if (!isFollowUpPermitted(form.access_granted) && form.follow_up_date) {
+    errs.follow_up_date = 'Follow-up date is only permitted when access is Scheduled'
+  }
+  if (form.needs_return && !isNeedsReturnPermitted(form.access_granted, form.verification_outcome)) {
+    errs.needs_return = 'Return-needed is not permitted when a material has been determined'
+  }
   if (form.notes.length > 500) {
     errs.notes = 'Notes must be 500 characters or fewer'
   }
@@ -55,6 +62,7 @@ function validate(form) {
 
 export default function NewVisit() {
   const navigate = useNavigate()
+  const location = useLocation()
   const [loading, setLoading] = useState(false)
   const [apiError, setApiError] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
@@ -65,13 +73,18 @@ export default function NewVisit() {
   const [fieldUsers, setFieldUsers] = useState([])
   const [fieldUsersLoading, setFieldUsersLoading] = useState(true)
 
+  const prefilled = location.state?.account_number || ''
+  const prefilledAddress = location.state?.address || ''
+
   const [form, setForm] = useState({
-    account_number: '',
+    account_number: prefilled,
     performed_by_uid: '',
     access_granted: '',
     verification_outcome: '',
     property_type: '',
     notes: '',
+    follow_up_date: '',
+    needs_return: false,
   })
 
   useEffect(() => {
@@ -82,8 +95,9 @@ export default function NewVisit() {
   }, [])
 
   const handleChange = (e) => {
-    const { name, value } = e.target
-    setForm({ ...form, [name]: value })
+    const { name, type, checked, value } = e.target
+    const val = type === 'checkbox' ? checked : value
+    setForm({ ...form, [name]: val })
     if (fieldErrors[name]) {
       setFieldErrors((prev) => ({ ...prev, [name]: '' }))
     }
@@ -133,6 +147,8 @@ export default function NewVisit() {
       if (form.verification_outcome) formData.append('verification_outcome', form.verification_outcome)
       if (form.property_type) formData.append('property_type', form.property_type)
       if (form.notes) formData.append('notes', form.notes)
+      if (form.follow_up_date) formData.append('follow_up_date', form.follow_up_date)
+      if (form.needs_return) formData.append('needs_return', 'true')
       photos.forEach((photo) => formData.append('photos', photo))
 
       const res = await createVisit(formData)
@@ -212,16 +228,25 @@ export default function NewVisit() {
             <form onSubmit={handleSubmit} className="space-y-5">
               <div className="space-y-2">
                 <Label>
-                  Account Number <span className="text-red-500">*</span>
+                  Property <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  name="account_number"
-                  value={form.account_number}
-                  onChange={handleChange}
-                  placeholder="e.g. 003518-000"
-                  className="font-mono tabular-nums"
-                  aria-invalid={!!fieldErrors.account_number}
-                />
+                {prefilled ? (
+                  <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-lg border">
+                    <div>
+                      <div className="text-sm font-medium text-slate-800">{prefilledAddress || prefilled}</div>
+                      <div className="text-xs text-muted-foreground font-mono tabular-nums">{prefilled}</div>
+                    </div>
+                  </div>
+                ) : (
+                  <PropertySearch
+                    onSelect={(prop) => {
+                      setForm({ ...form, account_number: prop.account_number })
+                      if (fieldErrors.account_number)
+                        setFieldErrors((prev) => ({ ...prev, account_number: '' }))
+                    }}
+                    inputClassName="h-11"
+                  />
+                )}
                 {fieldErrors.account_number && (
                   <p className="text-xs text-red-600">{fieldErrors.account_number}</p>
                 )}
@@ -282,9 +307,11 @@ export default function NewVisit() {
                       onClick={() => {
                         const update = { ...form, access_granted: opt }
                         if (opt !== 'Yes') update.verification_outcome = ''
+                        if (opt !== 'Scheduled') update.follow_up_date = ''
+                        if (opt === 'Scheduled') update.needs_return = false
                         setForm(update)
                         if (fieldErrors.access_granted)
-                          setFieldErrors((prev) => ({ ...prev, access_granted: '', verification_outcome: '' }))
+                          setFieldErrors((prev) => ({ ...prev, access_granted: '', verification_outcome: '', follow_up_date: '' }))
                       }}
                       className={
                         form.access_granted === opt
@@ -315,7 +342,9 @@ export default function NewVisit() {
                       size="sm"
                       disabled={!isOutcomePermitted(form.access_granted)}
                       onClick={() => {
-                        setForm({ ...form, verification_outcome: opt.value })
+                        const update = { ...form, verification_outcome: opt.value }
+                        if (isMaterialDetermination(opt.value)) update.needs_return = false
+                        setForm(update)
                         if (fieldErrors.verification_outcome)
                           setFieldErrors((prev) => ({ ...prev, verification_outcome: '' }))
                       }}
@@ -331,6 +360,24 @@ export default function NewVisit() {
                   <p className="text-xs text-red-600">{fieldErrors.verification_outcome}</p>
                 )}
               </div>
+
+              {isFollowUpPermitted(form.access_granted) && (
+                <div className="space-y-2">
+                  <Label>
+                    Appointment Date <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    type="date"
+                    name="follow_up_date"
+                    value={form.follow_up_date}
+                    onChange={handleChange}
+                    aria-invalid={!!fieldErrors.follow_up_date}
+                  />
+                  {fieldErrors.follow_up_date && (
+                    <p className="text-xs text-red-600">{fieldErrors.follow_up_date}</p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Property Type</Label>
@@ -350,6 +397,28 @@ export default function NewVisit() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {isNeedsReturnPermitted(form.access_granted, form.verification_outcome) && (
+                <div className="space-y-2 pt-1">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Return Queue</Label>
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <input
+                      type="checkbox"
+                      name="needs_return"
+                      id="needs_return"
+                      checked={form.needs_return}
+                      onChange={handleChange}
+                      className="w-5 h-5 accent-slate-600"
+                    />
+                    <label htmlFor="needs_return" className="text-sm font-medium text-slate-700">
+                      Needs return visit
+                      <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                        This property will be added to the return queue
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               <div className="space-y-2">
                 <Label>Notes</Label>
